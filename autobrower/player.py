@@ -1,5 +1,6 @@
 import json
 import platform
+import subprocess
 import time
 
 import pyautogui
@@ -7,6 +8,12 @@ import pyautogui
 from autobrower.config import get_profile_path
 
 _HAS_HSCROLL = platform.system() != "Windows"
+
+# Default phrases that mean "no appointments available"
+DEFAULT_NO_CITAS_PHRASES = [
+    "en este momento no hay citas disponibles",
+    "no hay citas disponibles",
+]
 
 
 def load_profile(name: str) -> dict:
@@ -18,11 +25,34 @@ def load_profile(name: str) -> dict:
         return json.load(f)
 
 
+def _play_alert() -> None:
+    """Emit an audible alert using the system bell or paplay."""
+    system = platform.system()
+    try:
+        if system == "Linux":
+            # Try paplay first (PulseAudio), fall back to beep
+            try:
+                subprocess.Popen(
+                    ["paplay", "/usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga"],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                )
+            except FileNotFoundError:
+                print("\a")  # terminal bell
+        elif system == "Darwin":
+            subprocess.Popen(["afplay", "/System/Library/Sounds/Glass.aiff"],
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        else:
+            print("\a")
+    except Exception:
+        print("\a")
+
+
 class Player:
     """Replays recorded mouse events at OS level using pyautogui."""
 
     def __init__(self, profile: dict, speed: float = 1.0, loop: bool = True,
-                 loop_delay: float = 0.5):
+                 loop_delay: float = 0.5,
+                 scan_targets: list[str] | None = None):
         if speed <= 0:
             raise ValueError(f"speed must be positive, got {speed}")
         self.events = profile["events"]
@@ -30,6 +60,29 @@ class Player:
         self.loop = loop
         self.loop_delay = loop_delay
         self.running = False
+        self._scan_targets = scan_targets
+
+    def _check_scan(self) -> bool:
+        """Run OCR scan after a loop cycle.
+
+        Returns True if the loop should CONTINUE (target text found → no
+        appointments), False if the loop should STOP (text gone → maybe
+        appointments available).
+        """
+        if not self._scan_targets:
+            return True  # no scan configured, always continue
+
+        from autobrower.scanner import scan_for_text
+
+        for target in self._scan_targets:
+            found, ocr_text = scan_for_text(target)
+            if found:
+                print(f"\n[SCAN] \"{target}\" detected — no appointments, continuing loop...")
+                return True
+
+        # None of the target phrases found → appointments might be available!
+        print(f"\n[SCAN] Target text NOT found — appointments may be available!")
+        return False
 
     def _dispatch(self, event: dict) -> None:
         x, y = event["x"], event["y"]
@@ -54,15 +107,17 @@ class Player:
                 pyautogui.hscroll(dx, x=x, y=y, _pause=False)
 
     def play(self) -> None:
-        """Start playback. Loops until Ctrl+C or failsafe triggers."""
+        """Start playback. Loops until Ctrl+C, failsafe, or scan detects availability."""
         if not self.events:
             return
 
         self.running = True
         original_pause = pyautogui.PAUSE
         pyautogui.PAUSE = 0
+        cycle = 0
         try:
             while self.running:
+                cycle += 1
                 for i, event in enumerate(self.events):
                     if not self.running:
                         break
@@ -76,6 +131,15 @@ class Player:
 
                 if not self.loop:
                     break
+
+                # After each loop cycle, run OCR scan
+                if self.running and self._scan_targets:
+                    should_continue = self._check_scan()
+                    if not should_continue:
+                        _play_alert()
+                        print(f"[ALERT] Stopped after {cycle} cycles — check for available appointments!")
+                        break
+
                 if self.running and self.loop_delay > 0:
                     time.sleep(self.loop_delay)
         except (KeyboardInterrupt, pyautogui.FailSafeException):

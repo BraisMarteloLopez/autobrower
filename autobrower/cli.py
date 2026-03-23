@@ -51,6 +51,8 @@ def cmd_record(args: argparse.Namespace) -> None:
 
 
 def cmd_play(args: argparse.Namespace) -> None:
+    from autobrower.player import DEFAULT_NO_CITAS_PHRASES
+
     name = args.profile
     try:
         profile = load_profile(name)
@@ -60,12 +62,22 @@ def cmd_play(args: argparse.Namespace) -> None:
 
     loop = not args.no_loop
     speed = args.speed
+
+    # Build scan targets list
+    scan_targets: list[str] | None = None
+    if args.scan:
+        scan_targets = args.scan_target if args.scan_target else DEFAULT_NO_CITAS_PHRASES
+
     n = profile["event_count"]
     dur = profile["duration"]
     print(f"Playing profile '{name}' ({n} events, {dur}s, speed={speed}x, loop={loop})")
+    if scan_targets:
+        print(f"Scanning for: {scan_targets}")
+        print("Loop stops + alert when text disappears (appointments available).")
     print("Press Ctrl+C or move mouse to top-left corner to stop.")
 
-    player = Player(profile, speed=speed, loop=loop, loop_delay=args.loop_delay)
+    player = Player(profile, speed=speed, loop=loop, loop_delay=args.loop_delay,
+                    scan_targets=scan_targets)
     player.play()
     print("\nPlayback stopped.")
 
@@ -126,6 +138,10 @@ def main() -> None:
     p_play.add_argument("--no-loop", action="store_true", help="Play once instead of looping")
     p_play.add_argument("--loop-delay", type=float, default=0.5,
                         help="Seconds to wait between loop cycles (default: 0.5)")
+    p_play.add_argument("--scan", action="store_true",
+                        help="Enable OCR scan after each loop cycle to detect appointment availability")
+    p_play.add_argument("--scan-target", type=str, action="append", default=None,
+                        help="Text to scan for (can be repeated). Defaults to 'no hay citas disponibles' phrases")
     p_play.set_defaults(func=cmd_play)
 
     # list
