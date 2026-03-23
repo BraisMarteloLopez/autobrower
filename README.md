@@ -6,7 +6,6 @@ Record and replay mouse actions at OS level. Captures moves, clicks, and scroll 
 
 - Python 3.11+
 - Linux or macOS (horizontal scroll not supported on Windows)
-- `tesseract` for OCR scanning (`apt install tesseract-ocr tesseract-ocr-spa` on Debian/Ubuntu)
 
 ## Installation
 
@@ -39,7 +38,7 @@ python -m autobrower record my-session -i 0.08      # faster sampling (default: 
 python -m autobrower record my-session --force       # overwrite without asking
 ```
 
-- Press `h` to trigger an OCR scan at any time. Captures a 1200x600 region around the cursor and checks whether any of the `SCAN_TARGETS` phrases are on screen. The result is printed to the terminal but does not affect the recording.
+- Press `h` to trigger an OCR scan at any time. Captures a region around the cursor and checks whether any of the `SCAN_TARGETS` phrases are on screen. The result is printed to the terminal but does not affect the recording.
 - Press `Ctrl+C` to stop recording.
 
 ### `play <profile>`
@@ -70,6 +69,19 @@ python -m autobrower play my-session --scan
 python -m autobrower play my-session --scan --scan-target "sin disponibilidad" --scan-target "agotado"
 ```
 
+### `scan`
+
+OCR debug mode. Does not record anything — just listens for `h` to capture the screen around the cursor and print the full OCR text. Useful for testing what the OCR engine reads and verifying your `SCAN_TARGETS`.
+
+```bash
+python -m autobrower scan
+
+# With custom targets
+python -m autobrower scan --scan-target "texto a buscar"
+```
+
+Press `Ctrl+C` to exit.
+
 ### `list`
 
 Lists all saved profiles with metadata.
@@ -95,9 +107,13 @@ SAMPLE_INTERVAL=0.16    # Seconds between move samples during recording
 PROFILES_DIR=./profiles # Directory to store profile JSON files
 PLAYBACK_SPEED=1.0      # Default playback speed multiplier (overridable via --speed)
 SCAN_TARGETS=en este momento no hay citas disponibles,no hay citas disponibles
+CAPTURE_WIDTH=1200      # Width in pixels of the OCR capture region
+CAPTURE_HEIGHT=600      # Height in pixels of the OCR capture region
 ```
 
 `SCAN_TARGETS` is a comma-separated list of phrases used by the OCR scanner, both during recording (manual scan with `h`) and during playback (`--scan`). If any of these phrases appear on screen, it means there are no appointments available.
+
+`CAPTURE_WIDTH` / `CAPTURE_HEIGHT` control the size of the screenshot taken around the cursor for OCR. Increase them to capture more of the screen, or decrease for faster scans.
 
 All variables are optional and have sensible defaults.
 
@@ -137,7 +153,7 @@ autobrower/
   config.py     # Environment-based configuration
   recorder.py   # Mouse event capture (pynput)
   player.py     # Mouse event replay (pyautogui)
-  scanner.py    # Screen capture and OCR scanning (tesseract)
+  scanner.py    # Screen capture and OCR scanning (easyocr)
 tests/
   test_config.py
   test_player.py
