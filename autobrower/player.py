@@ -57,8 +57,8 @@ class Player:
         self.running = False
         self._scan_targets = scan_targets
 
-    def _check_scan(self) -> bool:
-        """Run OCR scan after a loop cycle.
+    def _run_scan_at(self, x: int, y: int) -> bool:
+        """Run OCR scan at the given position (from a recorded scan event).
 
         Returns True if the loop should CONTINUE (target text found → no
         appointments), False if the loop should STOP (text gone → maybe
@@ -71,19 +71,20 @@ class Player:
 
         try:
             for target in self._scan_targets:
-                found, ocr_text = scan_for_text(target)
+                found, ocr_text = scan_for_text(target, pos=(x, y))
                 if found:
-                    print(f"\n[SCAN] \"{target}\" detected — no appointments, continuing loop...")
+                    print(f"\n[SCAN] \"{target}\" detected at ({x},{y}) — no appointments, continuing loop...")
                     return True
         except Exception as exc:
             print(f"\n[SCAN] Error during scan: {exc}")
             return True  # on error, keep looping rather than false-alerting
 
         # None of the target phrases found → appointments might be available!
-        print(f"\n[SCAN] Target text NOT found — appointments may be available!")
+        print(f"\n[SCAN] Target text NOT found at ({x},{y}) — appointments may be available!")
         return False
 
-    def _dispatch(self, event: dict) -> None:
+    def _dispatch(self, event: dict) -> bool:
+        """Execute a single event. Returns False if playback should stop (scan miss)."""
         x, y = event["x"], event["y"]
         etype = event["type"]
 
@@ -104,6 +105,14 @@ class Player:
                 pyautogui.scroll(dy, x=x, y=y, _pause=False)
             if dx and _HAS_HSCROLL:
                 pyautogui.hscroll(dx, x=x, y=y, _pause=False)
+
+        elif etype == "scan":
+            # Synchronous: wait for OCR result before continuing
+            should_continue = self._run_scan_at(x, y)
+            if not should_continue:
+                return False
+
+        return True
 
     def _on_key_press(self, key) -> None:
         try:
@@ -129,10 +138,18 @@ class Player:
         try:
             while self.running:
                 cycle += 1
+                scan_failed = False
                 for i, event in enumerate(self.events):
                     if not self.running:
                         break
-                    self._dispatch(event)
+
+                    if not self._dispatch(event):
+                        # Scan event didn't find target text → stop
+                        _play_alert()
+                        print(f"[ALERT] Stopped after {cycle} cycles — check for available appointments!")
+                        scan_failed = True
+                        self.running = False
+                        break
 
                     # Sleep for the delta until the next event
                     if i < len(self.events) - 1:
@@ -140,16 +157,8 @@ class Player:
                         if delta > 0:
                             time.sleep(delta)
 
-                if not self.loop:
+                if scan_failed or not self.loop:
                     break
-
-                # After each loop cycle, run OCR scan
-                if self.running and self._scan_targets:
-                    should_continue = self._check_scan()
-                    if not should_continue:
-                        _play_alert()
-                        print(f"[ALERT] Stopped after {cycle} cycles — check for available appointments!")
-                        break
 
                 if self.running and self.loop_delay > 0:
                     time.sleep(self.loop_delay)

@@ -61,19 +61,22 @@ class Recorder:
             "dy": dy,
         })
 
-    def _run_scan(self, pos) -> None:
+    def _run_scan_preview(self, pos) -> None:
+        """Live preview scan during recording (just for user feedback)."""
         from autobrower.scanner import scan_for_text
 
         try:
             for target in SCAN_TARGETS:
                 found, ocr_text = scan_for_text(target, pos=pos)
                 if found:
-                    print(f"\n[SCAN] FOUND: \"{target}\"")
+                    print(f"\n[SCAN PREVIEW] FOUND: \"{target}\"")
+                    print(f"  OCR: {ocr_text[:120]}")
                     return
 
-            print(f"\n[SCAN] Target text NOT found — appointments may be available!")
+            print(f"\n[SCAN PREVIEW] Target text NOT found in OCR output.")
+            print(f"  (This scan point has been saved to the profile)")
         except Exception as exc:
-            print(f"\n[SCAN] Error: {exc}")
+            print(f"\n[SCAN PREVIEW] Error: {exc}")
         finally:
             self._scanning = False
 
@@ -87,8 +90,16 @@ class Recorder:
         if self._scanning:
             return
         self._scanning = True
-        pos = _get_cursor_pos()
-        threading.Thread(target=self._run_scan, args=(pos,), daemon=True).start()
+
+        t = self._elapsed()
+        x, y = _get_cursor_pos()
+
+        # Save the scan point as an event in the profile
+        self._append({"t": round(t, 4), "type": "scan", "x": x, "y": y})
+        print(f"\n[REC] Scan point recorded at ({x}, {y}) t={t:.1f}s")
+
+        # Run a live preview so the user can verify OCR works at this spot
+        threading.Thread(target=self._run_scan_preview, args=((x, y),), daemon=True).start()
 
     def start(self) -> None:
         """Start recording. Blocks until stop() is called or KeyboardInterrupt."""
