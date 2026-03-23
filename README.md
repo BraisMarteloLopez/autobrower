@@ -40,6 +40,16 @@ python -m autobrower record my-session --force       # overwrite without asking
 
 Press `Ctrl+C` to stop recording.
 
+#### OCR scan during recording
+
+You can trigger an on-demand OCR scan while recording by pressing a hotkey. This captures a 1200x600 region around the cursor, runs Tesseract OCR (Spanish), and checks whether the target text is present on screen.
+
+```bash
+python -m autobrower record my-session --scan-key h --scan-target "no hay citas disponibles"
+```
+
+While recording, press `h` to scan. The result is printed to the terminal but does not affect the recording itself. Requires `tesseract` installed on the system.
+
 ### `play <profile>`
 
 Replays a recorded profile. Loops by default.
@@ -52,6 +62,20 @@ python -m autobrower play my-session --loop-delay 2.0     # 2s pause between cyc
 ```
 
 Stop with `Ctrl+C` or move the mouse to the top-left corner of the screen (pyautogui failsafe).
+
+#### OCR scan during playback
+
+When looping, `--scan` enables an automatic OCR scan after each cycle. If the target text is found on screen, the loop continues. If it disappears (meaning appointments may be available), playback stops and an audible alert plays.
+
+```bash
+# Use default target phrases ("no hay citas disponibles" variants)
+python -m autobrower play my-session --scan
+
+# Use custom target phrases
+python -m autobrower play my-session --scan --scan-target "sin disponibilidad" --scan-target "agotado"
+```
+
+Requires `tesseract` installed on the system (`apt install tesseract-ocr tesseract-ocr-spa` on Debian/Ubuntu).
 
 ### `list`
 
@@ -117,6 +141,7 @@ autobrower/
   config.py     # Environment-based configuration
   recorder.py   # Mouse event capture (pynput)
   player.py     # Mouse event replay (pyautogui)
+  scanner.py    # Screen capture and OCR scanning (tesseract)
 tests/
   test_config.py
   test_player.py
