@@ -112,16 +112,22 @@ def capture_around_cursor(width: int = CAPTURE_WIDTH, height: int = CAPTURE_HEIG
 
 
 def _normalize(text: str) -> str:
-    """Collapse whitespace, strip accents, and lowercase for fuzzy matching."""
+    """Strip accents and lowercase for fuzzy matching."""
     text = unicodedata.normalize("NFKD", text)
     text = "".join(c for c in text if not unicodedata.combining(c))
-    text = text.lower()
-    text = re.sub(r"\s+", " ", text).strip()
-    return text
+    return text.lower()
+
+
+def _spaceless(text: str) -> str:
+    """Normalize then remove ALL whitespace — handles OCR joining words."""
+    return re.sub(r"\s+", "", _normalize(text))
 
 
 def scan_for_text(target: str, width: int = CAPTURE_WIDTH, height: int = CAPTURE_HEIGHT, pos: tuple[int, int] | None = None) -> tuple[bool, str]:
     """Capture screen around cursor and check if *target* appears in the OCR text.
+
+    Comparison ignores spaces entirely because OCR often joins or splits words
+    (e.g. "estemomentonohay" instead of "en este momento no hay").
 
     Returns (found, full_ocr_text).
     """
@@ -129,5 +135,5 @@ def scan_for_text(target: str, width: int = CAPTURE_WIDTH, height: int = CAPTURE
     result, _ = _get_engine()(np.array(img))
     texts = [line[1] for line in result] if result else []
     ocr_text = " ".join(texts)
-    found = _normalize(target) in _normalize(ocr_text)
+    found = _spaceless(target) in _spaceless(ocr_text)
     return found, ocr_text
