@@ -121,7 +121,8 @@ def cmd_scan(args: argparse.Namespace) -> None:
     listener = keyboard.Listener(on_press=on_press)
     listener.start()
     try:
-        listener.join()
+        while listener.is_alive():
+            listener.join(timeout=0.5)
     except KeyboardInterrupt:
         pass
     finally:
