@@ -79,9 +79,8 @@ def cmd_list(args: argparse.Namespace) -> None:
 
 def cmd_scan(args: argparse.Namespace) -> None:
     import threading
-    import pyautogui
     from pynput import keyboard
-    from autobrower.scanner import scan_for_text
+    from autobrower.scanner import scan_for_text, _get_cursor_pos
 
     from autobrower.config import SCAN_TARGETS
 
@@ -117,7 +116,7 @@ def cmd_scan(args: argparse.Namespace) -> None:
         if scanning.is_set():
             return
         scanning.set()
-        pos = pyautogui.position()
+        pos = _get_cursor_pos()
         threading.Thread(target=_do_scan, args=(pos,), daemon=True).start()
 
     listener = keyboard.Listener(on_press=on_press)
