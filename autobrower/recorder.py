@@ -3,15 +3,10 @@ import threading
 import time
 from datetime import datetime, timezone
 
-import pyautogui
 from pynput import keyboard, mouse
 
 from autobrower.config import SAMPLE_INTERVAL, SCAN_TARGETS, get_profile_path
-
-
-def _abs_pos() -> tuple[int, int]:
-    """Return absolute cursor position via pyautogui (reliable on multi-monitor)."""
-    return pyautogui.position()
+from autobrower.scanner import _get_cursor_pos
 
 
 class Recorder:
@@ -39,12 +34,12 @@ class Recorder:
         if t - self._last_move_time < self.interval:
             return
         self._last_move_time = t
-        x, y = _abs_pos()
+        x, y = _get_cursor_pos()
         self._append({"t": round(t, 4), "type": "move", "x": x, "y": y})
 
     def _on_click(self, _x: int, _y: int, button: mouse.Button, pressed: bool) -> None:
         t = self._elapsed()
-        x, y = _abs_pos()
+        x, y = _get_cursor_pos()
         self._append({
             "t": round(t, 4),
             "type": "click",
@@ -56,7 +51,7 @@ class Recorder:
 
     def _on_scroll(self, _x: int, _y: int, dx: int, dy: int) -> None:
         t = self._elapsed()
-        x, y = _abs_pos()
+        x, y = _get_cursor_pos()
         self._append({
             "t": round(t, 4),
             "type": "scroll",
@@ -92,14 +87,14 @@ class Recorder:
         if self._scanning:
             return
         self._scanning = True
-        pos = _abs_pos()
+        pos = _get_cursor_pos()
         threading.Thread(target=self._run_scan, args=(pos,), daemon=True).start()
 
     def start(self) -> None:
         """Start recording. Blocks until stop() is called or KeyboardInterrupt."""
-        import pyautogui
-        screen_w, screen_h = pyautogui.size()
-        print(f"Screen size detected: {screen_w}x{screen_h} (absolute coordinates)")
+        from autobrower.scanner import _get_virtual_screen
+        vx, vy, vw, vh = _get_virtual_screen()
+        print(f"Screen size detected: {vw}x{vh} (virtual screen at {vx},{vy})")
         self.events.clear()
         self._start_time = time.monotonic()
         self._last_move_time = -self.interval
