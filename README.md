@@ -42,13 +42,7 @@ Press `Ctrl+C` to stop recording.
 
 #### OCR scan during recording
 
-You can trigger an on-demand OCR scan while recording by pressing a hotkey. This captures a 1200x600 region around the cursor, runs Tesseract OCR (Spanish), and checks whether the target text is present on screen.
-
-```bash
-python -m autobrower record my-session --scan-key h --scan-target "no hay citas disponibles"
-```
-
-While recording, press `h` to scan. The result is printed to the terminal but does not affect the recording itself. Requires `tesseract` installed on the system.
+Press `h` at any time during recording to trigger an OCR scan. This captures a 1200x600 region around the cursor, runs Tesseract OCR (Spanish), and checks whether any of the `SCAN_TARGETS` phrases (configured in `.env`) are present on screen. The result is printed to the terminal but does not affect the recording itself.
 
 ### `play <profile>`
 

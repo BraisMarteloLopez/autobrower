@@ -17,29 +17,11 @@ def cmd_record(args: argparse.Namespace) -> None:
             print("Cancelled.")
             return
 
-    scan_key = args.scan_key
-    scan_target = args.scan_target
-
-    def _on_scan_result(found: bool, ocr_text: str) -> None:
-        if found:
-            print(f"\n[SCAN] FOUND target text!")
-        else:
-            print(f"\n[SCAN] Target text not found.")
-        print(f"[SCAN] OCR output: {ocr_text.strip()[:200]}")
-
-    callback = _on_scan_result if scan_key and scan_target else None
-
     print(f"Recording profile '{name}' (interval={interval}s)")
-    if scan_key:
-        print(f"Press '{scan_key}' to scan for: \"{scan_target}\"")
+    print("Press 'h' to scan screen for target text (OCR).")
     print("Press Ctrl+C to stop recording...")
 
-    recorder = Recorder(
-        interval=interval,
-        scan_key=scan_key,
-        scan_target=scan_target,
-        scan_callback=callback,
-    )
+    recorder = Recorder(interval=interval)
     recorder.start()
 
     if not recorder.events:
@@ -124,10 +106,6 @@ def main() -> None:
     p_rec.add_argument("-i", "--interval", type=float, default=SAMPLE_INTERVAL,
                        help=f"Sampling interval in seconds (default: {SAMPLE_INTERVAL})")
     p_rec.add_argument("--force", action="store_true", help="Overwrite existing profile without asking")
-    p_rec.add_argument("--scan-key", type=str, default=None,
-                       help="Key to press during recording to trigger an OCR scan (e.g. 'h')")
-    p_rec.add_argument("--scan-target", type=str, default=None,
-                       help="Text to search for in the OCR scan (e.g. 'no hay citas disponibles')")
     p_rec.set_defaults(func=cmd_record)
 
     # play

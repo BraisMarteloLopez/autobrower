@@ -4,27 +4,19 @@ from datetime import datetime, timezone
 
 from pynput import keyboard, mouse
 
-from autobrower.config import SAMPLE_INTERVAL, get_profile_path
+from autobrower.config import SAMPLE_INTERVAL, SCAN_TARGETS, get_profile_path
 
 
 class Recorder:
     """Records mouse events at OS level using pynput."""
 
-    def __init__(self, interval: float = SAMPLE_INTERVAL,
-                 scan_key: str | None = None,
-                 scan_target: str | None = None,
-                 scan_callback=None):
+    def __init__(self, interval: float = SAMPLE_INTERVAL):
         self.interval = interval
         self.events: list[dict] = []
         self._start_time: float = 0.0
         self._last_move_time: float = -interval
         self._mouse_listener: mouse.Listener | None = None
         self._kb_listener: keyboard.Listener | None = None
-
-        # OCR scan settings
-        self._scan_key = scan_key  # e.g. "h"
-        self._scan_target = scan_target
-        self._scan_callback = scan_callback  # fn(found, ocr_text)
 
     def _elapsed(self) -> float:
         return time.monotonic() - self._start_time
@@ -59,20 +51,24 @@ class Recorder:
         })
 
     def _on_key_press(self, key) -> None:
-        if self._scan_key is None or self._scan_target is None:
-            return
         try:
             char = key.char
         except AttributeError:
             return
-        if char != self._scan_key:
+        if char != "h":
             return
 
         from autobrower.scanner import scan_for_text
 
-        found, ocr_text = scan_for_text(self._scan_target)
-        if self._scan_callback:
-            self._scan_callback(found, ocr_text)
+        for target in SCAN_TARGETS:
+            found, ocr_text = scan_for_text(target)
+            if found:
+                print(f"\n[SCAN] FOUND: \"{target}\"")
+                print(f"[SCAN] OCR output: {ocr_text.strip()[:200]}")
+                return
+
+        print(f"\n[SCAN] Target text NOT found — appointments may be available!")
+        print(f"[SCAN] OCR output: {ocr_text.strip()[:200]}")
 
     def start(self) -> None:
         """Start recording. Blocks until stop() is called or KeyboardInterrupt."""
@@ -86,10 +82,8 @@ class Recorder:
         )
         self._mouse_listener.start()
 
-        # Start keyboard listener for scan hotkey
-        if self._scan_key:
-            self._kb_listener = keyboard.Listener(on_press=self._on_key_press)
-            self._kb_listener.start()
+        self._kb_listener = keyboard.Listener(on_press=self._on_key_press)
+        self._kb_listener.start()
 
         try:
             while self._mouse_listener.is_alive():
