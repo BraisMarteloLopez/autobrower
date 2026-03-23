@@ -69,15 +69,19 @@ class Recorder:
 
         from autobrower.scanner import scan_for_text
 
-        for target in SCAN_TARGETS:
-            found, ocr_text = scan_for_text(target)
-            if found:
-                print(f"\n[SCAN] FOUND: \"{target}\"")
-                print(f"[SCAN] OCR output: {ocr_text.strip()[:200]}")
-                return
+        try:
+            for target in SCAN_TARGETS:
+                found, ocr_text = scan_for_text(target)
+                if found:
+                    print(f"\n[SCAN] FOUND: \"{target}\"")
+                    print(f"[SCAN] OCR output: {ocr_text.strip()[:200]}")
+                    return
 
-        print(f"\n[SCAN] Target text NOT found — appointments may be available!")
-        print(f"[SCAN] OCR output: {ocr_text.strip()[:200]}")
+            print(f"\n[SCAN] Target text NOT found — appointments may be available!")
+            print(f"[SCAN] OCR output: {ocr_text.strip()[:200]}")
+        except Exception as exc:
+            print(f"\n[SCAN] Error: {exc}")
+            print("[SCAN] Is Tesseract installed and in PATH?")
 
     def start(self) -> None:
         """Start recording. Blocks until stop() is called or KeyboardInterrupt."""
