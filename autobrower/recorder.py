@@ -66,12 +66,12 @@ class Recorder:
             "dy": dy,
         })
 
-    def _run_scan(self) -> None:
+    def _run_scan(self, pos) -> None:
         from autobrower.scanner import scan_for_text
 
         try:
             for target in SCAN_TARGETS:
-                found, ocr_text = scan_for_text(target)
+                found, ocr_text = scan_for_text(target, pos=pos)
                 if found:
                     print(f"\n[SCAN] FOUND: \"{target}\"")
                     return
@@ -92,7 +92,8 @@ class Recorder:
         if self._scanning:
             return
         self._scanning = True
-        threading.Thread(target=self._run_scan, daemon=True).start()
+        pos = _abs_pos()
+        threading.Thread(target=self._run_scan, args=(pos,), daemon=True).start()
 
     def start(self) -> None:
         """Start recording. Blocks until stop() is called or KeyboardInterrupt."""

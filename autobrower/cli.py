@@ -79,6 +79,7 @@ def cmd_list(args: argparse.Namespace) -> None:
 
 def cmd_scan(args: argparse.Namespace) -> None:
     import threading
+    import pyautogui
     from pynput import keyboard
     from autobrower.scanner import scan_for_text
 
@@ -92,10 +93,10 @@ def cmd_scan(args: argparse.Namespace) -> None:
     print("Press 'h' to capture and OCR the area around the cursor.")
     print("Press Ctrl+C to exit.\n")
 
-    def _do_scan():
+    def _do_scan(pos):
         try:
             for target in targets:
-                found, ocr_text = scan_for_text(target)
+                found, ocr_text = scan_for_text(target, pos=pos)
                 print(f"\n--- OCR result ---")
                 print(ocr_text.strip() if ocr_text.strip() else "(empty)")
                 print(f"--- Target: \"{target}\" → {'FOUND' if found else 'NOT FOUND'} ---\n")
@@ -116,7 +117,8 @@ def cmd_scan(args: argparse.Namespace) -> None:
         if scanning.is_set():
             return
         scanning.set()
-        threading.Thread(target=_do_scan, daemon=True).start()
+        pos = pyautogui.position()
+        threading.Thread(target=_do_scan, args=(pos,), daemon=True).start()
 
     listener = keyboard.Listener(on_press=on_press)
     listener.start()

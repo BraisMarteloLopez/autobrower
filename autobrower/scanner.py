@@ -20,9 +20,9 @@ def _get_engine():
     return _engine
 
 
-def capture_around_cursor(width: int = CAPTURE_WIDTH, height: int = CAPTURE_HEIGHT) -> "Image":
+def capture_around_cursor(width: int = CAPTURE_WIDTH, height: int = CAPTURE_HEIGHT, pos: tuple[int, int] | None = None) -> "Image":
     """Take a screenshot of a rectangle centred on the current mouse position."""
-    mx, my = pyautogui.position()
+    mx, my = pos if pos is not None else pyautogui.position()
     screen_w, screen_h = pyautogui.size()
 
     # Clamp capture size to screen dimensions
@@ -44,7 +44,7 @@ def _normalize(text: str) -> str:
     return text
 
 
-def scan_for_text(target: str, width: int = CAPTURE_WIDTH, height: int = CAPTURE_HEIGHT) -> tuple[bool, str]:
+def scan_for_text(target: str, width: int = CAPTURE_WIDTH, height: int = CAPTURE_HEIGHT, pos: tuple[int, int] | None = None) -> tuple[bool, str]:
     """Capture screen around cursor and check if *target* appears in the OCR text.
 
     Uses normalized comparison (no accents, collapsed whitespace) so minor
@@ -52,7 +52,7 @@ def scan_for_text(target: str, width: int = CAPTURE_WIDTH, height: int = CAPTURE
 
     Returns (found, full_ocr_text).
     """
-    img = capture_around_cursor(width, height)
+    img = capture_around_cursor(width, height, pos=pos)
     result, _ = _get_engine()(np.array(img))
     texts = [line[1] for line in result] if result else []
     ocr_text = " ".join(texts)
