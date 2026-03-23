@@ -75,7 +75,8 @@ def capture_around_cursor(width: int = CAPTURE_WIDTH, height: int = CAPTURE_HEIG
     debug_dir.mkdir(exist_ok=True)
     path = debug_dir / f"capture_{int(time.time())}.png"
     img.save(str(path))
-    print(f"[DEBUG] mouse=({mx},{my}) vscreen=({vx},{vy},{vw},{vh}) bbox=({left},{top},{width},{height}) → {path}")
+    actual_w, actual_h = img.size
+    print(f"[DEBUG] mouse=({mx},{my}) vscreen=({vx},{vy},{vw},{vh}) bbox=({left},{top},{left+width},{top+height}) img=({actual_w}x{actual_h}) → {path}")
 
     return img
 
