@@ -1,0 +1,106 @@
+import argparse
+import sys
+
+from autobrower.config import SAMPLE_INTERVAL, get_profile_path, list_profiles
+from autobrower.player import Player, load_profile
+from autobrower.recorder import Recorder
+
+
+def cmd_record(args: argparse.Namespace) -> None:
+    interval = args.interval
+    name = args.profile
+    print(f"Recording profile '{name}' (interval={interval}s)")
+    print("Press Ctrl+C to stop recording...")
+
+    recorder = Recorder(interval=interval)
+    recorder.start()
+
+    path = recorder.save(name)
+    print(f"\nSaved {len(recorder.events)} events ({recorder.events[-1]['t']:.1f}s) to {path}")
+
+
+def cmd_play(args: argparse.Namespace) -> None:
+    name = args.profile
+    try:
+        profile = load_profile(name)
+    except FileNotFoundError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    loop = not args.no_loop
+    speed = args.speed
+    n = profile["event_count"]
+    dur = profile["duration"]
+    print(f"Playing profile '{name}' ({n} events, {dur}s, speed={speed}x, loop={loop})")
+    print("Press Ctrl+C or move mouse to top-left corner to stop.")
+
+    player = Player(profile, speed=speed, loop=loop)
+    player.play()
+    print("\nPlayback stopped.")
+
+
+def cmd_list(args: argparse.Namespace) -> None:
+    profiles = list_profiles()
+    if not profiles:
+        print("No profiles found.")
+        return
+
+    print(f"{'Name':<25} {'Created':<22} {'Duration':>10} {'Events':>8}")
+    print("-" * 67)
+    for p in profiles:
+        created = p["created"][:19].replace("T", " ") if p["created"] != "unknown" else "unknown"
+        print(f"{p['name']:<25} {created:<22} {p['duration']:>9.1f}s {p['event_count']:>8}")
+
+
+def cmd_delete(args: argparse.Namespace) -> None:
+    name = args.profile
+    path = get_profile_path(name)
+    if not path.exists():
+        print(f"Error: Profile '{name}' not found.", file=sys.stderr)
+        sys.exit(1)
+
+    answer = input(f"Delete profile '{name}'? (y/N): ").strip().lower()
+    if answer != "y":
+        print("Cancelled.")
+        return
+
+    path.unlink()
+    print(f"Deleted profile '{name}'.")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        prog="autobrower",
+        description="Record and replay mouse actions at OS level.",
+    )
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    # record
+    p_rec = subparsers.add_parser("record", help="Record mouse events to a profile")
+    p_rec.add_argument("profile", help="Profile name")
+    p_rec.add_argument("-i", "--interval", type=float, default=SAMPLE_INTERVAL,
+                       help=f"Sampling interval in seconds (default: {SAMPLE_INTERVAL})")
+    p_rec.set_defaults(func=cmd_record)
+
+    # play
+    p_play = subparsers.add_parser("play", help="Replay a recorded profile")
+    p_play.add_argument("profile", help="Profile name")
+    p_play.add_argument("--speed", type=float, default=1.0, help="Playback speed multiplier (default: 1.0)")
+    p_play.add_argument("--no-loop", action="store_true", help="Play once instead of looping")
+    p_play.set_defaults(func=cmd_play)
+
+    # list
+    p_list = subparsers.add_parser("list", help="List available profiles")
+    p_list.set_defaults(func=cmd_list)
+
+    # delete
+    p_del = subparsers.add_parser("delete", help="Delete a profile")
+    p_del.add_argument("profile", help="Profile name to delete")
+    p_del.set_defaults(func=cmd_delete)
+
+    args = parser.parse_args()
+    args.func(args)
+
+
+if __name__ == "__main__":
+    main()
