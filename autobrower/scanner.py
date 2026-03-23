@@ -8,24 +8,16 @@ import pyautogui
 
 from autobrower.config import CAPTURE_HEIGHT, CAPTURE_WIDTH
 
-# Lazy-initialised reader (first call downloads models ~100 MB)
-_reader = None
+# Lazy-initialised OCR engine
+_engine = None
 
 
-def _get_reader():
-    global _reader
-    if _reader is None:
-        try:
-            import easyocr
-        except (ImportError, OSError) as exc:
-            raise RuntimeError(
-                "Could not load easyocr/PyTorch. On Windows, try:\n"
-                "  1. Install VC++ Redistributable: https://aka.ms/vs/16/release/vc_redist.x64.exe\n"
-                "  2. Reinstall PyTorch: pip install --force-reinstall torch torchvision --index-url https://download.pytorch.org/whl/cpu\n"
-                "  3. Or reinstall easyocr: pip install --force-reinstall easyocr"
-            ) from exc
-        _reader = easyocr.Reader(["es", "en"], gpu=False)
-    return _reader
+def _get_engine():
+    global _engine
+    if _engine is None:
+        from rapidocr_onnxruntime import RapidOCR
+        _engine = RapidOCR()
+    return _engine
 
 
 def capture_around_cursor(width: int = CAPTURE_WIDTH, height: int = CAPTURE_HEIGHT) -> "Image":
@@ -61,7 +53,8 @@ def scan_for_text(target: str, width: int = CAPTURE_WIDTH, height: int = CAPTURE
     Returns (found, full_ocr_text).
     """
     img = capture_around_cursor(width, height)
-    results = _get_reader().readtext(np.array(img), detail=0)
-    ocr_text = " ".join(results)
+    result, _ = _get_engine()(np.array(img))
+    texts = [line[1] for line in result] if result else []
+    ocr_text = " ".join(texts)
     found = _normalize(target) in _normalize(ocr_text)
     return found, ocr_text
