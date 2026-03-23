@@ -19,6 +19,8 @@ def test_default_values():
     # Defaults are set at import time; just verify they are sensible types
     assert isinstance(config.SAMPLE_INTERVAL, float)
     assert config.SAMPLE_INTERVAL > 0
+    assert isinstance(config.PLAYBACK_SPEED, float)
+    assert config.PLAYBACK_SPEED > 0
     assert isinstance(config.PROFILES_DIR, Path)
 
 

@@ -1,7 +1,7 @@
 import argparse
 import sys
 
-from autobrower.config import SAMPLE_INTERVAL, get_profile_path, list_profiles
+from autobrower.config import PLAYBACK_SPEED, SAMPLE_INTERVAL, get_profile_path, list_profiles
 from autobrower.player import Player, load_profile
 from autobrower.recorder import Recorder
 
@@ -98,7 +98,8 @@ def main() -> None:
     # play
     p_play = subparsers.add_parser("play", help="Replay a recorded profile")
     p_play.add_argument("profile", help="Profile name")
-    p_play.add_argument("--speed", type=float, default=1.0, help="Playback speed multiplier (default: 1.0)")
+    p_play.add_argument("--speed", type=float, default=PLAYBACK_SPEED,
+                        help=f"Playback speed multiplier (default: {PLAYBACK_SPEED})")
     p_play.add_argument("--no-loop", action="store_true", help="Play once instead of looping")
     p_play.add_argument("--loop-delay", type=float, default=0.5,
                         help="Seconds to wait between loop cycles (default: 0.5)")

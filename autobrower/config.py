@@ -9,6 +9,7 @@ load_dotenv()
 
 SAMPLE_INTERVAL: float = float(os.getenv("SAMPLE_INTERVAL", "0.16"))
 PROFILES_DIR: Path = Path(os.getenv("PROFILES_DIR", "./profiles"))
+PLAYBACK_SPEED: float = float(os.getenv("PLAYBACK_SPEED", "1.0"))
 
 
 _VALID_PROFILE_NAME = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$")
