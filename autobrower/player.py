@@ -69,11 +69,15 @@ class Player:
 
         from autobrower.scanner import scan_for_text
 
-        for target in self._scan_targets:
-            found, ocr_text = scan_for_text(target)
-            if found:
-                print(f"\n[SCAN] \"{target}\" detected — no appointments, continuing loop...")
-                return True
+        try:
+            for target in self._scan_targets:
+                found, ocr_text = scan_for_text(target)
+                if found:
+                    print(f"\n[SCAN] \"{target}\" detected — no appointments, continuing loop...")
+                    return True
+        except Exception as exc:
+            print(f"\n[SCAN] Error during scan: {exc}")
+            return True  # on error, keep looping rather than false-alerting
 
         # None of the target phrases found → appointments might be available!
         print(f"\n[SCAN] Target text NOT found — appointments may be available!")

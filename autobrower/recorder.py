@@ -1,4 +1,5 @@
 import json
+import threading
 import time
 from datetime import datetime, timezone
 
@@ -19,13 +20,19 @@ class Recorder:
     def __init__(self, interval: float = SAMPLE_INTERVAL):
         self.interval = interval
         self.events: list[dict] = []
+        self._lock = threading.Lock()
         self._start_time: float = 0.0
         self._last_move_time: float = -interval
         self._mouse_listener: mouse.Listener | None = None
         self._kb_listener: keyboard.Listener | None = None
+        self._scanning = False
 
     def _elapsed(self) -> float:
         return time.monotonic() - self._start_time
+
+    def _append(self, event: dict) -> None:
+        with self._lock:
+            self.events.append(event)
 
     def _on_move(self, _x: int, _y: int) -> None:
         t = self._elapsed()
@@ -33,12 +40,12 @@ class Recorder:
             return
         self._last_move_time = t
         x, y = _abs_pos()
-        self.events.append({"t": round(t, 4), "type": "move", "x": x, "y": y})
+        self._append({"t": round(t, 4), "type": "move", "x": x, "y": y})
 
     def _on_click(self, _x: int, _y: int, button: mouse.Button, pressed: bool) -> None:
         t = self._elapsed()
         x, y = _abs_pos()
-        self.events.append({
+        self._append({
             "t": round(t, 4),
             "type": "click",
             "x": x,
@@ -50,7 +57,7 @@ class Recorder:
     def _on_scroll(self, _x: int, _y: int, dx: int, dy: int) -> None:
         t = self._elapsed()
         x, y = _abs_pos()
-        self.events.append({
+        self._append({
             "t": round(t, 4),
             "type": "scroll",
             "x": x,
@@ -59,14 +66,7 @@ class Recorder:
             "dy": dy,
         })
 
-    def _on_key_press(self, key) -> None:
-        try:
-            char = key.char
-        except AttributeError:
-            return
-        if char != "h":
-            return
-
+    def _run_scan(self) -> None:
         from autobrower.scanner import scan_for_text
 
         try:
@@ -79,6 +79,20 @@ class Recorder:
             print(f"\n[SCAN] Target text NOT found — appointments may be available!")
         except Exception as exc:
             print(f"\n[SCAN] Error: {exc}")
+        finally:
+            self._scanning = False
+
+    def _on_key_press(self, key) -> None:
+        try:
+            char = key.char
+        except AttributeError:
+            return
+        if char != "h":
+            return
+        if self._scanning:
+            return
+        self._scanning = True
+        threading.Thread(target=self._run_scan, daemon=True).start()
 
     def start(self) -> None:
         """Start recording. Blocks until stop() is called or KeyboardInterrupt."""

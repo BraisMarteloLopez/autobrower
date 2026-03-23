@@ -23,15 +23,12 @@ def capture_around_cursor(width: int = 1200, height: int = 600) -> "Image":
     mx, my = pyautogui.position()
     screen_w, screen_h = pyautogui.size()
 
-    left = max(0, mx - width // 2)
-    top = max(0, my - height // 2)
-    # clamp to screen edges
-    if left + width > screen_w:
-        left = screen_w - width
-    if top + height > screen_h:
-        top = screen_h - height
-    left = max(0, left)
-    top = max(0, top)
+    # Clamp capture size to screen dimensions
+    width = min(width, screen_w)
+    height = min(height, screen_h)
+
+    left = max(0, min(mx - width // 2, screen_w - width))
+    top = max(0, min(my - height // 2, screen_h - height))
 
     return pyautogui.screenshot(region=(left, top, width, height))
 

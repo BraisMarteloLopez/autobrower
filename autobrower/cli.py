@@ -78,23 +78,21 @@ def cmd_list(args: argparse.Namespace) -> None:
 
 
 def cmd_scan(args: argparse.Namespace) -> None:
+    import threading
     from pynput import keyboard
     from autobrower.scanner import scan_for_text
 
+    from autobrower.config import SCAN_TARGETS
+
     targets = args.scan_target or list(SCAN_TARGETS)
+    scanning = threading.Event()
 
     print("=== OCR debug mode ===")
     print(f"Targets: {targets}")
     print("Press 'h' to capture and OCR the area around the cursor.")
     print("Press Ctrl+C to exit.\n")
 
-    def on_press(key):
-        try:
-            char = key.char
-        except AttributeError:
-            return
-        if char != "h":
-            return
+    def _do_scan():
         try:
             for target in targets:
                 found, ocr_text = scan_for_text(target)
@@ -105,6 +103,20 @@ def cmd_scan(args: argparse.Namespace) -> None:
                     return
         except Exception as exc:
             print(f"\n[ERROR] {exc}\n")
+        finally:
+            scanning.clear()
+
+    def on_press(key):
+        try:
+            char = key.char
+        except AttributeError:
+            return
+        if char != "h":
+            return
+        if scanning.is_set():
+            return
+        scanning.set()
+        threading.Thread(target=_do_scan, daemon=True).start()
 
     listener = keyboard.Listener(on_press=on_press)
     listener.start()
