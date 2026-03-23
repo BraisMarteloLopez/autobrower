@@ -1,0 +1,95 @@
+import sys
+from unittest import mock
+
+import pytest
+
+# Mock pyautogui before importing player (no X server in CI)
+mock_pyautogui = mock.MagicMock()
+sys.modules.setdefault("pyautogui", mock_pyautogui)
+
+from autobrower.player import Player
+
+
+@pytest.fixture(autouse=True)
+def reset_mocks():
+    """Reset pyautogui mocks before each test."""
+    mock_pyautogui.reset_mock()
+    yield
+
+
+@pytest.fixture
+def sample_profile():
+    return {
+        "name": "test",
+        "created": "2026-01-01T00:00:00",
+        "duration": 1.0,
+        "event_count": 4,
+        "events": [
+            {"t": 0.0, "type": "move", "x": 100, "y": 200},
+            {"t": 0.2, "type": "click", "x": 100, "y": 200, "button": "left", "pressed": True},
+            {"t": 0.3, "type": "click", "x": 100, "y": 200, "button": "left", "pressed": False},
+            {"t": 1.0, "type": "scroll", "x": 100, "y": 200, "dx": 0, "dy": -3},
+        ],
+    }
+
+
+def test_dispatch_move(sample_profile):
+    """Move events call moveTo."""
+    player = Player(sample_profile, loop=False)
+    player._dispatch(sample_profile["events"][0])
+    mock_pyautogui.moveTo.assert_called_once_with(100, 200, _pause=False)
+
+
+def test_dispatch_click_pressed(sample_profile):
+    """Click with pressed=True calls mouseDown."""
+    player = Player(sample_profile, loop=False)
+    player._dispatch(sample_profile["events"][1])
+    mock_pyautogui.mouseDown.assert_called_once_with(x=100, y=200, button="left", _pause=False)
+
+
+def test_dispatch_click_released(sample_profile):
+    """Click with pressed=False calls mouseUp."""
+    player = Player(sample_profile, loop=False)
+    player._dispatch(sample_profile["events"][2])
+    mock_pyautogui.mouseUp.assert_called_once_with(x=100, y=200, button="left", _pause=False)
+
+
+def test_dispatch_scroll(sample_profile):
+    """Scroll events call scroll with dy."""
+    player = Player(sample_profile, loop=False)
+    player._dispatch(sample_profile["events"][3])
+    mock_pyautogui.scroll.assert_called_once_with(-3, x=100, y=200, _pause=False)
+
+
+@mock.patch("time.sleep")
+def test_play_no_loop(mock_sleep, sample_profile):
+    """play() with no-loop runs events once and stops."""
+    player = Player(sample_profile, loop=False)
+    player.play()
+
+    assert mock_pyautogui.moveTo.call_count == 1
+    assert mock_pyautogui.mouseDown.call_count == 1
+    assert mock_pyautogui.mouseUp.call_count == 1
+    assert mock_pyautogui.scroll.call_count == 1
+    assert mock_sleep.call_count == 3  # 3 deltas between 4 events
+
+
+@mock.patch("time.sleep")
+def test_speed_multiplier(mock_sleep, sample_profile):
+    """Speed multiplier divides sleep deltas."""
+    player = Player(sample_profile, speed=2.0, loop=False)
+    player.play()
+
+    # First delta: (0.2 - 0.0) / 2.0 = 0.1
+    mock_sleep.assert_any_call(pytest.approx(0.1, abs=0.01))
+
+
+@mock.patch("time.sleep")
+def test_empty_profile(mock_sleep):
+    """play() with empty events returns immediately."""
+    profile = {"name": "empty", "events": []}
+    player = Player(profile, loop=False)
+    player.play()
+
+    mock_pyautogui.moveTo.assert_not_called()
+    mock_sleep.assert_not_called()
