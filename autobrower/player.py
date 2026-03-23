@@ -101,8 +101,17 @@ class Player:
             if dx and _HAS_HSCROLL:
                 pyautogui.hscroll(dx, x=x, y=y, _pause=False)
 
+    def _on_key_press(self, key) -> None:
+        try:
+            char = key.char
+        except AttributeError:
+            return
+        if char == "j":
+            print("\n[STOP] 'j' pressed — stopping playback...")
+            self.running = False
+
     def play(self) -> None:
-        """Start playback. Loops until Ctrl+C, failsafe, or scan detects availability."""
+        """Start playback. Loops until Ctrl+C, 'j' key, failsafe, or scan detects availability."""
         if not self.events:
             return
 
@@ -110,6 +119,9 @@ class Player:
         original_pause = pyautogui.PAUSE
         pyautogui.PAUSE = 0
         cycle = 0
+        from pynput import keyboard
+        kb_listener = keyboard.Listener(on_press=self._on_key_press)
+        kb_listener.start()
         try:
             while self.running:
                 cycle += 1
@@ -140,6 +152,7 @@ class Player:
         except (KeyboardInterrupt, pyautogui.FailSafeException):
             pass
         finally:
+            kb_listener.stop()
             pyautogui.PAUSE = original_pause
             self.running = False
 

@@ -72,6 +72,9 @@ class Recorder:
 
     def start(self) -> None:
         """Start recording. Blocks until stop() is called or KeyboardInterrupt."""
+        import pyautogui
+        screen_w, screen_h = pyautogui.size()
+        print(f"Screen size detected: {screen_w}x{screen_h} (absolute coordinates)")
         self.events.clear()
         self._start_time = time.monotonic()
         self._last_move_time = -self.interval

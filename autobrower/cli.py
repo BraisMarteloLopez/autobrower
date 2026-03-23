@@ -56,7 +56,7 @@ def cmd_play(args: argparse.Namespace) -> None:
     if scan_targets:
         print(f"Scanning for: {scan_targets}")
         print("Loop stops + alert when text disappears (appointments available).")
-    print("Press Ctrl+C or move mouse to top-left corner to stop.")
+    print("Press 'j', Ctrl+C, or move mouse to top-left corner to stop.")
 
     player = Player(profile, speed=speed, loop=loop, loop_delay=args.loop_delay,
                     scan_targets=scan_targets)

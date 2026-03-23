@@ -53,7 +53,7 @@ python -m autobrower play my-session --no-loop            # play once
 python -m autobrower play my-session --loop-delay 2.0     # 2s pause between cycles
 ```
 
-Stop with `Ctrl+C` or move the mouse to the top-left corner of the screen (pyautogui failsafe).
+Stop with `j`, `Ctrl+C`, or move the mouse to the top-left corner of the screen (pyautogui failsafe).
 
 #### Automatic OCR scan during playback
 
