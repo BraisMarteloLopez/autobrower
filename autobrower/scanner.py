@@ -3,8 +3,19 @@
 import re
 import unicodedata
 
+import easyocr
+import numpy as np
 import pyautogui
-import pytesseract
+
+# Lazy-initialised reader (first call downloads models ~100 MB)
+_reader: easyocr.Reader | None = None
+
+
+def _get_reader() -> easyocr.Reader:
+    global _reader
+    if _reader is None:
+        _reader = easyocr.Reader(["es", "en"], gpu=False)
+    return _reader
 
 
 def capture_around_cursor(width: int = 1200, height: int = 600) -> "Image":
@@ -43,6 +54,7 @@ def scan_for_text(target: str, width: int = 1200, height: int = 600) -> tuple[bo
     Returns (found, full_ocr_text).
     """
     img = capture_around_cursor(width, height)
-    ocr_text = pytesseract.image_to_string(img, lang="spa")
+    results = _get_reader().readtext(np.array(img), detail=0)
+    ocr_text = " ".join(results)
     found = _normalize(target) in _normalize(ocr_text)
     return found, ocr_text
