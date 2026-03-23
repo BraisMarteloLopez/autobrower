@@ -3,19 +3,27 @@
 import re
 import unicodedata
 
-import easyocr
 import numpy as np
 import pyautogui
 
 from autobrower.config import CAPTURE_HEIGHT, CAPTURE_WIDTH
 
 # Lazy-initialised reader (first call downloads models ~100 MB)
-_reader: easyocr.Reader | None = None
+_reader = None
 
 
-def _get_reader() -> easyocr.Reader:
+def _get_reader():
     global _reader
     if _reader is None:
+        try:
+            import easyocr
+        except (ImportError, OSError) as exc:
+            raise RuntimeError(
+                "Could not load easyocr/PyTorch. On Windows, try:\n"
+                "  1. Install VC++ Redistributable: https://aka.ms/vs/16/release/vc_redist.x64.exe\n"
+                "  2. Reinstall PyTorch: pip install --force-reinstall torch torchvision --index-url https://download.pytorch.org/whl/cpu\n"
+                "  3. Or reinstall easyocr: pip install --force-reinstall easyocr"
+            ) from exc
         _reader = easyocr.Reader(["es", "en"], gpu=False)
     return _reader
 
