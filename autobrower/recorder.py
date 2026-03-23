@@ -94,6 +94,8 @@ class Recorder:
         try:
             self._mouse_listener.join()
         except KeyboardInterrupt:
+            pass
+        finally:
             self.stop()
 
     def stop(self) -> None:
