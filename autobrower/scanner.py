@@ -1,7 +1,5 @@
 """Screen capture and OCR scanning around the mouse cursor."""
 
-import ctypes
-import platform
 import re
 import unicodedata
 
@@ -9,16 +7,6 @@ import numpy as np
 import pyautogui
 
 from autobrower.config import CAPTURE_HEIGHT, CAPTURE_WIDTH
-
-# Enable DPI awareness on Windows so coordinates match the actual screen pixels
-if platform.system() == "Windows":
-    try:
-        ctypes.windll.shcore.SetProcessDpiAwareness(2)  # Per-monitor DPI aware
-    except Exception:
-        try:
-            ctypes.windll.user32.SetProcessDPIAware()
-        except Exception:
-            pass
 
 # Lazy-initialised OCR engine
 _engine = None
@@ -44,7 +32,6 @@ def capture_around_cursor(width: int = CAPTURE_WIDTH, height: int = CAPTURE_HEIG
     left = max(0, min(mx - width // 2, screen_w - width))
     top = max(0, min(my - height // 2, screen_h - height))
 
-    print(f"[DEBUG] mouse=({mx},{my}) screen=({screen_w}x{screen_h}) region=({left},{top},{width},{height})")
     return pyautogui.screenshot(region=(left, top, width, height))
 
 
