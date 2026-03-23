@@ -34,8 +34,13 @@ def capture_around_cursor(width: int = CAPTURE_WIDTH, height: int = CAPTURE_HEIG
 
     print(f"[DEBUG] mouse=({mx},{my}) screen=({screen_w}x{screen_h}) capture=({left},{top},{width},{height})")
     img = pyautogui.screenshot(region=(left, top, width, height))
-    img.save("_debug_capture.png")
-    print("[DEBUG] Screenshot saved to _debug_capture.png — check what region was captured")
+    from pathlib import Path
+    debug_dir = Path("debug_captures")
+    debug_dir.mkdir(exist_ok=True)
+    import time
+    path = debug_dir / f"capture_{int(time.time())}.png"
+    img.save(str(path))
+    print(f"[DEBUG] Screenshot saved to {path}")
     return img
 
 
