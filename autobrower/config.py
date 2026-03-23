@@ -1,6 +1,6 @@
 import json
 import os
-from datetime import datetime
+import re
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -11,8 +11,21 @@ SAMPLE_INTERVAL: float = float(os.getenv("SAMPLE_INTERVAL", "0.16"))
 PROFILES_DIR: Path = Path(os.getenv("PROFILES_DIR", "./profiles"))
 
 
+_VALID_PROFILE_NAME = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$")
+
+
+def validate_profile_name(name: str) -> None:
+    """Raise ValueError if the profile name contains unsafe characters."""
+    if not _VALID_PROFILE_NAME.match(name):
+        raise ValueError(
+            f"Invalid profile name '{name}'. "
+            "Use only letters, digits, hyphens, and underscores."
+        )
+
+
 def get_profile_path(name: str) -> Path:
     """Return the full path for a profile, creating the directory if needed."""
+    validate_profile_name(name)
     PROFILES_DIR.mkdir(parents=True, exist_ok=True)
     return PROFILES_DIR / f"{name}.json"
 

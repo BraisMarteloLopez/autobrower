@@ -47,6 +47,28 @@ def test_get_profile_path_creates_dir():
             assert profiles_dir.is_dir()
 
 
+def test_profile_name_validation():
+    """Reject profile names with path traversal or unsafe characters."""
+    from autobrower.config import validate_profile_name
+
+    # Valid names
+    validate_profile_name("my-profile")
+    validate_profile_name("session_01")
+    validate_profile_name("Test123")
+
+    # Invalid names
+    with pytest.raises(ValueError):
+        validate_profile_name("../../etc/passwd")
+    with pytest.raises(ValueError):
+        validate_profile_name("../hack")
+    with pytest.raises(ValueError):
+        validate_profile_name("name with spaces")
+    with pytest.raises(ValueError):
+        validate_profile_name(".hidden")
+    with pytest.raises(ValueError):
+        validate_profile_name("")
+
+
 def test_list_profiles_empty():
     """list_profiles returns empty list when no profiles exist."""
     with tempfile.TemporaryDirectory() as tmpdir:
