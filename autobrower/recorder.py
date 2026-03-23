@@ -92,7 +92,8 @@ class Recorder:
             self._kb_listener.start()
 
         try:
-            self._mouse_listener.join()
+            while self._mouse_listener.is_alive():
+                self._mouse_listener.join(timeout=0.5)
         except KeyboardInterrupt:
             pass
         finally:
