@@ -9,6 +9,14 @@ from autobrower.recorder import Recorder
 def cmd_record(args: argparse.Namespace) -> None:
     interval = args.interval
     name = args.profile
+
+    path = get_profile_path(name)
+    if path.exists() and not args.force:
+        answer = input(f"Profile '{name}' already exists. Overwrite? (y/N): ").strip().lower()
+        if answer != "y":
+            print("Cancelled.")
+            return
+
     print(f"Recording profile '{name}' (interval={interval}s)")
     print("Press Ctrl+C to stop recording...")
 
@@ -84,6 +92,7 @@ def main() -> None:
     p_rec.add_argument("profile", help="Profile name")
     p_rec.add_argument("-i", "--interval", type=float, default=SAMPLE_INTERVAL,
                        help=f"Sampling interval in seconds (default: {SAMPLE_INTERVAL})")
+    p_rec.add_argument("--force", action="store_true", help="Overwrite existing profile without asking")
     p_rec.set_defaults(func=cmd_record)
 
     # play
