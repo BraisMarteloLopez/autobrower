@@ -5,9 +5,6 @@ import pyautogui
 
 from autobrower.config import get_profile_path
 
-# Allow moving to screen edges but keep failsafe active
-pyautogui.PAUSE = 0
-
 
 def load_profile(name: str) -> dict:
     """Load a profile JSON file by name."""
@@ -51,6 +48,7 @@ class Player:
             return
 
         self.running = True
+        pyautogui.PAUSE = 0
         try:
             while self.running:
                 for i, event in enumerate(self.events):
