@@ -21,10 +21,12 @@ def load_profile(name: str) -> dict:
 class Player:
     """Replays recorded mouse events at OS level using pyautogui."""
 
-    def __init__(self, profile: dict, speed: float = 1.0, loop: bool = True):
+    def __init__(self, profile: dict, speed: float = 1.0, loop: bool = True,
+                 loop_delay: float = 0.5):
         self.events = profile["events"]
         self.speed = speed
         self.loop = loop
+        self.loop_delay = loop_delay
         self.running = False
 
     def _dispatch(self, event: dict) -> None:
@@ -71,6 +73,8 @@ class Player:
 
                 if not self.loop:
                     break
+                if self.running and self.loop_delay > 0:
+                    time.sleep(self.loop_delay)
         except (KeyboardInterrupt, pyautogui.FailSafeException):
             pass
         finally:

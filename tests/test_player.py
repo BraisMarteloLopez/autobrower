@@ -96,6 +96,35 @@ def test_speed_multiplier(mock_sleep, sample_profile):
 
 
 @mock.patch("time.sleep")
+def test_loop_delay(mock_sleep):
+    """Loop delay adds a pause between cycles."""
+    events = [
+        {"t": 0.0, "type": "move", "x": 10, "y": 20},
+        {"t": 0.1, "type": "move", "x": 30, "y": 40},
+    ]
+    profile = {"name": "test", "events": events}
+    player = Player(profile, loop=True, loop_delay=1.0)
+
+    # Stop after first cycle completes
+    call_count = [0]
+    original_dispatch = player._dispatch
+
+    def counting_dispatch(event):
+        original_dispatch(event)
+        call_count[0] += 1
+        if call_count[0] >= 4:  # 2 events x 2 cycles
+            player.stop()
+
+    player._dispatch = counting_dispatch
+    player.play()
+
+    # Should have inter-event sleep (0.1s) + loop_delay (1.0s) calls
+    sleep_args = [c[0][0] for c in mock_sleep.call_args_list]
+    assert any(pytest.approx(1.0, abs=0.01) == s for s in sleep_args), \
+        f"Expected loop_delay of 1.0s in sleep calls: {sleep_args}"
+
+
+@mock.patch("time.sleep")
 def test_empty_profile(mock_sleep):
     """play() with empty events returns immediately."""
     profile = {"name": "empty", "events": []}

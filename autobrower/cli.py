@@ -46,7 +46,7 @@ def cmd_play(args: argparse.Namespace) -> None:
     print(f"Playing profile '{name}' ({n} events, {dur}s, speed={speed}x, loop={loop})")
     print("Press Ctrl+C or move mouse to top-left corner to stop.")
 
-    player = Player(profile, speed=speed, loop=loop)
+    player = Player(profile, speed=speed, loop=loop, loop_delay=args.loop_delay)
     player.play()
     print("\nPlayback stopped.")
 
@@ -100,6 +100,8 @@ def main() -> None:
     p_play.add_argument("profile", help="Profile name")
     p_play.add_argument("--speed", type=float, default=1.0, help="Playback speed multiplier (default: 1.0)")
     p_play.add_argument("--no-loop", action="store_true", help="Play once instead of looping")
+    p_play.add_argument("--loop-delay", type=float, default=0.5,
+                        help="Seconds to wait between loop cycles (default: 0.5)")
     p_play.set_defaults(func=cmd_play)
 
     # list
