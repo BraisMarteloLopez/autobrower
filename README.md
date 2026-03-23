@@ -5,7 +5,7 @@ Record and replay mouse actions at OS level. Captures moves, clicks, and scroll 
 ## Requirements
 
 - Python 3.11+
-- Linux or macOS (horizontal scroll not supported on Windows)
+- Linux, macOS, or Windows (horizontal scroll not supported on Windows)
 
 ## Installation
 
@@ -153,7 +153,7 @@ autobrower/
   config.py     # Environment-based configuration
   recorder.py   # Mouse event capture (pynput)
   player.py     # Mouse event replay (pyautogui)
-  scanner.py    # Screen capture and OCR scanning (easyocr)
+  scanner.py    # Screen capture and OCR scanning (rapidocr-onnxruntime)
 tests/
   test_config.py
   test_player.py
