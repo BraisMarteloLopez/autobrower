@@ -101,6 +101,7 @@ Copy `.env.example` to `.env` and adjust values:
 SAMPLE_INTERVAL=0.16    # Seconds between move samples during recording
 PROFILES_DIR=./profiles # Directory to store profile JSON files
 PLAYBACK_SPEED=1.0      # Default playback speed multiplier (overridable via --speed)
+SCAN_TARGETS=en este momento no hay citas disponibles,no hay citas disponibles  # Comma-separated phrases for OCR scan
 ```
 
 All variables are optional and have sensible defaults.

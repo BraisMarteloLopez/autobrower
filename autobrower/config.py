@@ -13,6 +13,13 @@ PLAYBACK_SPEED: float = float(os.getenv("PLAYBACK_SPEED", "1.0"))
 if PLAYBACK_SPEED <= 0:
     raise ValueError(f"PLAYBACK_SPEED must be positive, got {PLAYBACK_SPEED}")
 
+# Default phrases that indicate "no appointments available".
+# Comma-separated in .env; OCR scan looks for these on screen.
+_DEFAULT_SCAN_TARGETS = "en este momento no hay citas disponibles,no hay citas disponibles"
+SCAN_TARGETS: list[str] = [
+    s.strip() for s in os.getenv("SCAN_TARGETS", _DEFAULT_SCAN_TARGETS).split(",") if s.strip()
+]
+
 
 _VALID_PROFILE_NAME = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$")
 

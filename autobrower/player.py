@@ -5,15 +5,10 @@ import time
 
 import pyautogui
 
+from autobrower.config import SCAN_TARGETS as DEFAULT_NO_CITAS_PHRASES
 from autobrower.config import get_profile_path
 
 _HAS_HSCROLL = platform.system() != "Windows"
-
-# Default phrases that mean "no appointments available"
-DEFAULT_NO_CITAS_PHRASES = [
-    "en este momento no hay citas disponibles",
-    "no hay citas disponibles",
-]
 
 
 def load_profile(name: str) -> dict:
