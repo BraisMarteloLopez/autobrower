@@ -7,6 +7,8 @@ import easyocr
 import numpy as np
 import pyautogui
 
+from autobrower.config import CAPTURE_HEIGHT, CAPTURE_WIDTH
+
 # Lazy-initialised reader (first call downloads models ~100 MB)
 _reader: easyocr.Reader | None = None
 
@@ -18,7 +20,7 @@ def _get_reader() -> easyocr.Reader:
     return _reader
 
 
-def capture_around_cursor(width: int = 1200, height: int = 600) -> "Image":
+def capture_around_cursor(width: int = CAPTURE_WIDTH, height: int = CAPTURE_HEIGHT) -> "Image":
     """Take a screenshot of a rectangle centred on the current mouse position."""
     mx, my = pyautogui.position()
     screen_w, screen_h = pyautogui.size()
@@ -42,7 +44,7 @@ def _normalize(text: str) -> str:
     return text
 
 
-def scan_for_text(target: str, width: int = 1200, height: int = 600) -> tuple[bool, str]:
+def scan_for_text(target: str, width: int = CAPTURE_WIDTH, height: int = CAPTURE_HEIGHT) -> tuple[bool, str]:
     """Capture screen around cursor and check if *target* appears in the OCR text.
 
     Uses normalized comparison (no accents, collapsed whitespace) so minor

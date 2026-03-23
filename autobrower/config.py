@@ -20,6 +20,9 @@ SCAN_TARGETS: list[str] = [
     s.strip() for s in os.getenv("SCAN_TARGETS", _DEFAULT_SCAN_TARGETS).split(",") if s.strip()
 ]
 
+CAPTURE_WIDTH: int = int(os.getenv("CAPTURE_WIDTH", "1200"))
+CAPTURE_HEIGHT: int = int(os.getenv("CAPTURE_HEIGHT", "600"))
+
 
 _VALID_PROFILE_NAME = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$")
 
