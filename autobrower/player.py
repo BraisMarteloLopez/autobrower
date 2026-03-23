@@ -1,9 +1,12 @@
 import json
+import platform
 import time
 
 import pyautogui
 
 from autobrower.config import get_profile_path
+
+_HAS_HSCROLL = platform.system() != "Windows"
 
 
 def load_profile(name: str) -> dict:
@@ -40,7 +43,11 @@ class Player:
 
         elif etype == "scroll":
             dy = event.get("dy", 0)
-            pyautogui.scroll(dy, x=x, y=y, _pause=False)
+            dx = event.get("dx", 0)
+            if dy:
+                pyautogui.scroll(dy, x=x, y=y, _pause=False)
+            if dx and _HAS_HSCROLL:
+                pyautogui.hscroll(dx, x=x, y=y, _pause=False)
 
     def play(self) -> None:
         """Start playback. Loops until Ctrl+C or failsafe triggers."""
