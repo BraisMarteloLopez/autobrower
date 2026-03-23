@@ -22,25 +22,32 @@ def _get_engine():
 
 def capture_around_cursor(width: int = CAPTURE_WIDTH, height: int = CAPTURE_HEIGHT, pos: tuple[int, int] | None = None) -> "Image":
     """Take a screenshot of a rectangle centred on the current mouse position."""
+    from PIL import ImageGrab
+
     mx, my = pos if pos is not None else pyautogui.position()
-    screen_w, screen_h = pyautogui.size()
 
-    # Clamp capture size to screen dimensions
-    width = min(width, screen_w)
-    height = min(height, screen_h)
+    # Take full screenshot (respects actual pixel coordinates including DPI)
+    full = ImageGrab.grab(all_screens=True)
+    fw, fh = full.size
 
-    left = max(0, min(mx - width // 2, screen_w - width))
-    top = max(0, min(my - height // 2, screen_h - height))
+    # Clamp capture size
+    width = min(width, fw)
+    height = min(height, fh)
 
-    print(f"[DEBUG] mouse=({mx},{my}) screen=({screen_w}x{screen_h}) capture=({left},{top},{width},{height})")
-    img = pyautogui.screenshot(region=(left, top, width, height))
+    left = max(0, min(mx - width // 2, fw - width))
+    top = max(0, min(my - height // 2, fh - height))
+
+    img = full.crop((left, top, left + width, top + height))
+
+    # Debug: save capture for verification
     from pathlib import Path
+    import time
     debug_dir = Path("debug_captures")
     debug_dir.mkdir(exist_ok=True)
-    import time
     path = debug_dir / f"capture_{int(time.time())}.png"
     img.save(str(path))
-    print(f"[DEBUG] Screenshot saved to {path}")
+    print(f"[DEBUG] mouse=({mx},{my}) full=({fw}x{fh}) crop=({left},{top},{width},{height}) → {path}")
+
     return img
 
 
