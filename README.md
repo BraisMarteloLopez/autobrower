@@ -148,7 +148,7 @@ python -m pytest tests/ -v
 
 ```
 autobrower/
-  __main__.py   # Entry point
+  __main__.py   # Entry point (+ Windows DPI awareness)
   cli.py        # Argument parsing and commands
   config.py     # Environment-based configuration
   recorder.py   # Mouse event capture (pynput)
