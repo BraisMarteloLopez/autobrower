@@ -15,6 +15,10 @@ def cmd_record(args: argparse.Namespace) -> None:
     recorder = Recorder(interval=interval)
     recorder.start()
 
+    if not recorder.events:
+        print("\nNo events recorded.")
+        return
+
     path = recorder.save(name)
     print(f"\nSaved {len(recorder.events)} events ({recorder.events[-1]['t']:.1f}s) to {path}")
 
