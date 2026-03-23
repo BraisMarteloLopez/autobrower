@@ -23,6 +23,8 @@ class Player:
 
     def __init__(self, profile: dict, speed: float = 1.0, loop: bool = True,
                  loop_delay: float = 0.5):
+        if speed <= 0:
+            raise ValueError(f"speed must be positive, got {speed}")
         self.events = profile["events"]
         self.speed = speed
         self.loop = loop
@@ -57,6 +59,7 @@ class Player:
             return
 
         self.running = True
+        original_pause = pyautogui.PAUSE
         pyautogui.PAUSE = 0
         try:
             while self.running:
@@ -78,6 +81,7 @@ class Player:
         except (KeyboardInterrupt, pyautogui.FailSafeException):
             pass
         finally:
+            pyautogui.PAUSE = original_pause
             self.running = False
 
     def stop(self) -> None:

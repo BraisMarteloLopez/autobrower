@@ -10,6 +10,8 @@ load_dotenv()
 SAMPLE_INTERVAL: float = float(os.getenv("SAMPLE_INTERVAL", "0.16"))
 PROFILES_DIR: Path = Path(os.getenv("PROFILES_DIR", "./profiles"))
 PLAYBACK_SPEED: float = float(os.getenv("PLAYBACK_SPEED", "1.0"))
+if PLAYBACK_SPEED <= 0:
+    raise ValueError(f"PLAYBACK_SPEED must be positive, got {PLAYBACK_SPEED}")
 
 
 _VALID_PROFILE_NAME = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$")
@@ -32,19 +34,12 @@ def get_profile_path(name: str) -> Path:
 
 
 def _read_profile_metadata(path: Path) -> dict | None:
-    """Read only the metadata fields from a profile without loading all events."""
+    """Read metadata fields from a profile, excluding the events array."""
     try:
         with open(path) as fh:
-            # Metadata is in the first 6 lines of the indented JSON.
-            # Read until we hit "events" key, then close with "}"
-            header_lines = []
-            for line in fh:
-                if '"events"' in line:
-                    break
-                header_lines.append(line)
-            # Close the JSON object so we can parse the header
-            header = "".join(header_lines).rstrip().rstrip(",") + "\n}"
-            return json.loads(header)
+            data = json.load(fh)
+        data.pop("events", None)
+        return data
     except (json.JSONDecodeError, OSError):
         return None
 

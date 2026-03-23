@@ -96,6 +96,24 @@ def test_speed_multiplier(mock_sleep, sample_profile):
 
 
 @mock.patch("time.sleep")
+def test_pause_restored_after_play(mock_sleep, sample_profile):
+    """pyautogui.PAUSE is restored to its original value after playback."""
+    mock_pyautogui.PAUSE = 0.1
+    player = Player(sample_profile, loop=False)
+    player.play()
+    assert mock_pyautogui.PAUSE == 0.1
+
+
+def test_invalid_speed():
+    """Player rejects zero or negative speed."""
+    profile = {"name": "test", "events": []}
+    with pytest.raises(ValueError):
+        Player(profile, speed=0)
+    with pytest.raises(ValueError):
+        Player(profile, speed=-1.5)
+
+
+@mock.patch("time.sleep")
 def test_loop_delay(mock_sleep):
     """Loop delay adds a pause between cycles."""
     events = [
