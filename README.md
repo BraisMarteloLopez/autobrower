@@ -5,7 +5,7 @@ Record and replay mouse actions at OS level. Captures moves, clicks, and scroll 
 ## Requirements
 
 - Python 3.11+
-- Linux, macOS, or Windows (horizontal scroll not supported on Windows)
+- Windows, Linux, or macOS (horizontal scroll not supported on Windows)
 
 ## Installation
 
