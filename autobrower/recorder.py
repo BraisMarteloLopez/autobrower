@@ -14,7 +14,7 @@ class Recorder:
         self.interval = interval
         self.events: list[dict] = []
         self._start_time: float = 0.0
-        self._last_move_time: float = 0.0
+        self._last_move_time: float = -interval
         self._listener: mouse.Listener | None = None
 
     def _elapsed(self) -> float:
@@ -53,7 +53,7 @@ class Recorder:
         """Start recording. Blocks until stop() is called or KeyboardInterrupt."""
         self.events.clear()
         self._start_time = time.monotonic()
-        self._last_move_time = 0.0
+        self._last_move_time = -self.interval
         self._listener = mouse.Listener(
             on_move=self._on_move,
             on_click=self._on_click,
