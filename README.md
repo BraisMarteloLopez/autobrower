@@ -6,6 +6,7 @@ Record and replay mouse actions at OS level. Captures moves, clicks, and scroll 
 
 - Python 3.11+
 - Linux or macOS (horizontal scroll not supported on Windows)
+- `tesseract` for OCR scanning (`apt install tesseract-ocr tesseract-ocr-spa` on Debian/Ubuntu)
 
 ## Installation
 
@@ -38,11 +39,8 @@ python -m autobrower record my-session -i 0.08      # faster sampling (default: 
 python -m autobrower record my-session --force       # overwrite without asking
 ```
 
-Press `Ctrl+C` to stop recording.
-
-#### OCR scan during recording
-
-Press `h` at any time during recording to trigger an OCR scan. This captures a 1200x600 region around the cursor, runs Tesseract OCR (Spanish), and checks whether any of the `SCAN_TARGETS` phrases (configured in `.env`) are present on screen. The result is printed to the terminal but does not affect the recording itself.
+- Press `h` to trigger an OCR scan at any time. Captures a 1200x600 region around the cursor and checks whether any of the `SCAN_TARGETS` phrases are on screen. The result is printed to the terminal but does not affect the recording.
+- Press `Ctrl+C` to stop recording.
 
 ### `play <profile>`
 
@@ -57,19 +55,20 @@ python -m autobrower play my-session --loop-delay 2.0     # 2s pause between cyc
 
 Stop with `Ctrl+C` or move the mouse to the top-left corner of the screen (pyautogui failsafe).
 
-#### OCR scan during playback
+#### Automatic OCR scan during playback
 
-When looping, `--scan` enables an automatic OCR scan after each cycle. If the target text is found on screen, the loop continues. If it disappears (meaning appointments may be available), playback stops and an audible alert plays.
+When looping, `--scan` enables an automatic OCR scan after each cycle. The scan checks for the `SCAN_TARGETS` phrases on screen:
+
+- **Any phrase found** → "no hay citas", the loop continues.
+- **No phrase found** → appointments may be available, playback stops and an audible alert plays.
 
 ```bash
-# Use default target phrases ("no hay citas disponibles" variants)
+# Use SCAN_TARGETS from .env
 python -m autobrower play my-session --scan
 
-# Use custom target phrases
+# Override with custom phrases
 python -m autobrower play my-session --scan --scan-target "sin disponibilidad" --scan-target "agotado"
 ```
-
-Requires `tesseract` installed on the system (`apt install tesseract-ocr tesseract-ocr-spa` on Debian/Ubuntu).
 
 ### `list`
 
@@ -95,8 +94,10 @@ Copy `.env.example` to `.env` and adjust values:
 SAMPLE_INTERVAL=0.16    # Seconds between move samples during recording
 PROFILES_DIR=./profiles # Directory to store profile JSON files
 PLAYBACK_SPEED=1.0      # Default playback speed multiplier (overridable via --speed)
-SCAN_TARGETS=en este momento no hay citas disponibles,no hay citas disponibles  # Comma-separated phrases for OCR scan
+SCAN_TARGETS=en este momento no hay citas disponibles,no hay citas disponibles
 ```
+
+`SCAN_TARGETS` is a comma-separated list of phrases used by the OCR scanner, both during recording (manual scan with `h`) and during playback (`--scan`). If any of these phrases appear on screen, it means there are no appointments available.
 
 All variables are optional and have sensible defaults.
 
