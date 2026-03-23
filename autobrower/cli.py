@@ -77,6 +77,46 @@ def cmd_list(args: argparse.Namespace) -> None:
         print(f"{p['name']:<25} {created:<22} {p['duration']:>9.1f}s {p['event_count']:>8}")
 
 
+def cmd_scan(args: argparse.Namespace) -> None:
+    from pynput import keyboard
+    from autobrower.scanner import scan_for_text
+
+    targets = args.scan_target or list(SCAN_TARGETS)
+
+    print("=== OCR debug mode ===")
+    print(f"Targets: {targets}")
+    print("Press 'h' to capture and OCR the area around the cursor.")
+    print("Press Ctrl+C to exit.\n")
+
+    def on_press(key):
+        try:
+            char = key.char
+        except AttributeError:
+            return
+        if char != "h":
+            return
+        try:
+            for target in targets:
+                found, ocr_text = scan_for_text(target)
+                print(f"\n--- OCR result ---")
+                print(ocr_text.strip() if ocr_text.strip() else "(empty)")
+                print(f"--- Target: \"{target}\" → {'FOUND' if found else 'NOT FOUND'} ---\n")
+                if found:
+                    return
+        except Exception as exc:
+            print(f"\n[ERROR] {exc}\n")
+
+    listener = keyboard.Listener(on_press=on_press)
+    listener.start()
+    try:
+        listener.join()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        listener.stop()
+    print("\nScan mode stopped.")
+
+
 def cmd_delete(args: argparse.Namespace) -> None:
     name = args.profile
     path = get_profile_path(name)
@@ -121,6 +161,12 @@ def main() -> None:
     p_play.add_argument("--scan-target", type=str, action="append", default=None,
                         help="Text to scan for (can be repeated). Defaults to 'no hay citas disponibles' phrases")
     p_play.set_defaults(func=cmd_play)
+
+    # scan (OCR debug)
+    p_scan = subparsers.add_parser("scan", help="OCR debug mode: press 'h' to see what the OCR reads")
+    p_scan.add_argument("--scan-target", type=str, action="append", default=None,
+                        help="Text to search for (can be repeated). Defaults to SCAN_TARGETS from .env")
+    p_scan.set_defaults(func=cmd_scan)
 
     # list
     p_list = subparsers.add_parser("list", help="List available profiles")
