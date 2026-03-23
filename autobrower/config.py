@@ -10,6 +10,7 @@ load_dotenv()
 SAMPLE_INTERVAL: float = float(os.getenv("SAMPLE_INTERVAL", "0.16"))
 PROFILES_DIR: Path = Path(os.getenv("PROFILES_DIR", "./profiles"))
 PLAYBACK_SPEED: float = float(os.getenv("PLAYBACK_SPEED", "1.0"))
+DEBUG: bool = os.getenv("DEBUG", "0").lower() in ("1", "true", "yes")
 if PLAYBACK_SPEED <= 0:
     raise ValueError(f"PLAYBACK_SPEED must be positive, got {PLAYBACK_SPEED}")
 

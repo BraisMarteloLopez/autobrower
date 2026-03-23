@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import pyautogui
 from pynput import keyboard, mouse
 
-from autobrower.config import SAMPLE_INTERVAL, SCAN_TARGETS, get_profile_path
+from autobrower.config import DEBUG, SAMPLE_INTERVAL, SCAN_TARGETS, get_profile_path
 
 
 def _abs_pos() -> tuple[int, int]:
@@ -70,18 +70,18 @@ class Recorder:
         from autobrower.scanner import scan_for_text
 
         try:
+            ocr_text = ""
             for target in SCAN_TARGETS:
                 found, ocr_text = scan_for_text(target)
+                if DEBUG:
+                    print(f"\n[DEBUG] OCR full text:\n{ocr_text.strip()}")
                 if found:
                     print(f"\n[SCAN] FOUND: \"{target}\"")
-                    print(f"[SCAN] OCR output: {ocr_text.strip()[:200]}")
                     return
 
             print(f"\n[SCAN] Target text NOT found — appointments may be available!")
-            print(f"[SCAN] OCR output: {ocr_text.strip()[:200]}")
         except Exception as exc:
             print(f"\n[SCAN] Error: {exc}")
-            print("[SCAN] Is Tesseract installed and in PATH?")
 
     def start(self) -> None:
         """Start recording. Blocks until stop() is called or KeyboardInterrupt."""
