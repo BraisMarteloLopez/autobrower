@@ -55,20 +55,21 @@ def test_dispatch_click_released(sample_profile):
 
 
 def test_dispatch_scroll(sample_profile):
-    """Scroll events call scroll with dy."""
+    """Scroll events move to position then scroll without coords."""
     player = Player(sample_profile, loop=False)
     player._dispatch(sample_profile["events"][3])
-    mock_pyautogui.scroll.assert_called_once_with(-3, x=100, y=200, _pause=False)
+    mock_pyautogui.moveTo.assert_called_once_with(100, 200, _pause=False)
+    mock_pyautogui.scroll.assert_called_once_with(-3, _pause=False)
 
 
-@mock.patch("autobrower.player._HAS_HSCROLL", True)
-def test_dispatch_scroll_horizontal():
-    """Scroll events with dx call hscroll when supported."""
+@mock.patch("autobrower.player._hscroll")
+def test_dispatch_scroll_horizontal(mock_hs):
+    """Scroll events with dx call _hscroll."""
     event = {"t": 0.0, "type": "scroll", "x": 100, "y": 200, "dx": 5, "dy": 0}
     profile = {"name": "test", "events": [event]}
     player = Player(profile, loop=False)
     player._dispatch(event)
-    mock_pyautogui.hscroll.assert_called_once_with(5, x=100, y=200, _pause=False)
+    mock_hs.assert_called_once_with(5)
     mock_pyautogui.scroll.assert_not_called()
 
 
@@ -78,7 +79,7 @@ def test_play_no_loop(mock_sleep, sample_profile):
     player = Player(sample_profile, loop=False)
     player.play()
 
-    assert mock_pyautogui.moveTo.call_count == 1
+    assert mock_pyautogui.moveTo.call_count == 2  # 1 move event + 1 scroll positioning
     assert mock_pyautogui.mouseDown.call_count == 1
     assert mock_pyautogui.mouseUp.call_count == 1
     assert mock_pyautogui.scroll.call_count == 1

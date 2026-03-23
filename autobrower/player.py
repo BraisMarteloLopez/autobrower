@@ -8,7 +8,44 @@ import pyautogui
 from autobrower.config import SCAN_TARGETS as DEFAULT_NO_CITAS_PHRASES
 from autobrower.config import get_profile_path
 
-_HAS_HSCROLL = platform.system() != "Windows"
+IS_WINDOWS = platform.system() == "Windows"
+
+
+def _hscroll(clicks: int) -> None:
+    """Horizontal scroll that works on all platforms including Windows."""
+    if IS_WINDOWS:
+        import ctypes
+        import ctypes.wintypes
+        MOUSEEVENTF_HWHEEL = 0x01000
+        WHEEL_DELTA = 120
+        # Build a MOUSEINPUT struct via SendInput
+        class MOUSEINPUT(ctypes.Structure):
+            _fields_ = [
+                ("dx", ctypes.c_long),
+                ("dy", ctypes.c_long),
+                ("mouseData", ctypes.wintypes.DWORD),
+                ("dwFlags", ctypes.wintypes.DWORD),
+                ("time", ctypes.wintypes.DWORD),
+                ("dwExtraInfo", ctypes.POINTER(ctypes.c_ulong)),
+            ]
+
+        class INPUT(ctypes.Structure):
+            _fields_ = [
+                ("type", ctypes.wintypes.DWORD),
+                ("mi", MOUSEINPUT),
+            ]
+
+        inp = INPUT()
+        inp.type = 0  # INPUT_MOUSE
+        inp.mi.dx = 0
+        inp.mi.dy = 0
+        inp.mi.mouseData = ctypes.wintypes.DWORD(int(clicks * WHEEL_DELTA))
+        inp.mi.dwFlags = MOUSEEVENTF_HWHEEL
+        inp.mi.time = 0
+        inp.mi.dwExtraInfo = None
+        ctypes.windll.user32.SendInput(1, ctypes.byref(inp), ctypes.sizeof(inp))
+    else:
+        pyautogui.hscroll(clicks, _pause=False)
 
 
 def load_profile(name: str) -> dict:
@@ -101,10 +138,15 @@ class Player:
         elif etype == "scroll":
             dy = event.get("dy", 0)
             dx = event.get("dx", 0)
+            # Move cursor first, then scroll at current position.
+            # Passing x,y directly to pyautogui.scroll() can misfire on
+            # Windows because the internal moveTo + wheel happen too fast
+            # for the target window to register the hover.
+            pyautogui.moveTo(x, y, _pause=False)
             if dy:
-                pyautogui.scroll(dy, x=x, y=y, _pause=False)
-            if dx and _HAS_HSCROLL:
-                pyautogui.hscroll(dx, x=x, y=y, _pause=False)
+                pyautogui.scroll(dy, _pause=False)
+            if dx:
+                _hscroll(dx)
 
         elif etype == "scan":
             # Synchronous: wait for OCR result before continuing
