@@ -32,7 +32,11 @@ def capture_around_cursor(width: int = CAPTURE_WIDTH, height: int = CAPTURE_HEIG
     left = max(0, min(mx - width // 2, screen_w - width))
     top = max(0, min(my - height // 2, screen_h - height))
 
-    return pyautogui.screenshot(region=(left, top, width, height))
+    print(f"[DEBUG] mouse=({mx},{my}) screen=({screen_w}x{screen_h}) capture=({left},{top},{width},{height})")
+    img = pyautogui.screenshot(region=(left, top, width, height))
+    img.save("_debug_capture.png")
+    print("[DEBUG] Screenshot saved to _debug_capture.png — check what region was captured")
+    return img
 
 
 def _normalize(text: str) -> str:
