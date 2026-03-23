@@ -55,10 +55,10 @@ def test_dispatch_click_released(sample_profile):
 
 
 def test_dispatch_scroll(sample_profile):
-    """Scroll events move to position then scroll without coords."""
+    """Scroll events scroll at current cursor position (no moveTo)."""
     player = Player(sample_profile, loop=False)
     player._dispatch(sample_profile["events"][3])
-    mock_pyautogui.moveTo.assert_called_once_with(100, 200, _pause=False)
+    mock_pyautogui.moveTo.assert_not_called()
     mock_pyautogui.scroll.assert_called_once_with(-3, _pause=False)
 
 
@@ -79,7 +79,7 @@ def test_play_no_loop(mock_sleep, sample_profile):
     player = Player(sample_profile, loop=False)
     player.play()
 
-    assert mock_pyautogui.moveTo.call_count == 2  # 1 move event + 1 scroll positioning
+    assert mock_pyautogui.moveTo.call_count == 1  # only the move event
     assert mock_pyautogui.mouseDown.call_count == 1
     assert mock_pyautogui.mouseUp.call_count == 1
     assert mock_pyautogui.scroll.call_count == 1

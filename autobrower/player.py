@@ -138,11 +138,10 @@ class Player:
         elif etype == "scroll":
             dy = event.get("dy", 0)
             dx = event.get("dx", 0)
-            # Move cursor first, then scroll at current position.
-            # Passing x,y directly to pyautogui.scroll() can misfire on
-            # Windows because the internal moveTo + wheel happen too fast
-            # for the target window to register the hover.
-            pyautogui.moveTo(x, y, _pause=False)
+            # Scroll at current cursor position — preceding move events
+            # already placed the cursor on the target element, and the
+            # inter-event sleep preserved the original timing so the
+            # browser has already processed the hover.
             if dy:
                 pyautogui.scroll(dy, _pause=False)
             if dx:
