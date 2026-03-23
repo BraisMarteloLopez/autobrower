@@ -18,7 +18,7 @@ from autobrower.config import CAPTURE_HEIGHT, CAPTURE_WIDTH
 _engine = None
 
 IS_WINDOWS = platform.system() == "Windows"
-DEBUG_CAPTURES = os.environ.get("AUTOBROWER_DEBUG_CAPTURES", "").lower() in ("1", "true", "yes")
+DEBUG_CAPTURES = os.environ.get("AUTOBROWER_DEBUG_CAPTURES", "1").lower() in ("1", "true", "yes")
 
 
 def _get_engine():
