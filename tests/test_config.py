@@ -69,7 +69,7 @@ def test_list_profiles_with_data():
             "events": [],
         }
         with open(Path(tmpdir) / "demo.json", "w") as f:
-            json.dump(profile, f)
+            json.dump(profile, f, indent=2)
 
         with mock.patch.dict(os.environ, {"PROFILES_DIR": tmpdir}):
             import importlib
