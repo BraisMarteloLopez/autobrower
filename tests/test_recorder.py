@@ -6,9 +6,10 @@ from unittest import mock
 
 import pytest
 
-# Mock pynput before importing recorder (no X server in CI)
+# Mock pynput and pyautogui before importing recorder (no X server in CI)
 sys.modules.setdefault("pynput", mock.MagicMock())
 sys.modules.setdefault("pynput.mouse", mock.MagicMock())
+sys.modules.setdefault("pyautogui", mock.MagicMock())
 
 from autobrower.recorder import Recorder
 
@@ -23,11 +24,13 @@ def test_move_throttle(recorder):
     recorder._start_time = 0.0
     recorder._last_move_time = -1.0  # allow first event through
 
-    with mock.patch("time.monotonic", side_effect=[0.0, 0.05, 0.10, 0.20]):
-        recorder._on_move(100, 200)  # t=0.0 → recorded (last_move=-1)
-        recorder._on_move(110, 210)  # t=0.05 → throttled (0.05 < 0.16)
-        recorder._on_move(120, 220)  # t=0.10 → throttled (0.10 < 0.16)
-        recorder._on_move(130, 230)  # t=0.20 → recorded (0.20 >= 0.16)
+    positions = [(100, 200), (130, 230)]  # only non-throttled calls reach _abs_pos
+    with mock.patch("time.monotonic", side_effect=[0.0, 0.05, 0.10, 0.20]), \
+         mock.patch("autobrower.recorder._abs_pos", side_effect=positions):
+        recorder._on_move(0, 0)  # t=0.0 → recorded (last_move=-1)
+        recorder._on_move(0, 0)  # t=0.05 → throttled (0.05 < 0.16)
+        recorder._on_move(0, 0)  # t=0.10 → throttled (0.10 < 0.16)
+        recorder._on_move(0, 0)  # t=0.20 → recorded (0.20 >= 0.16)
 
     assert len(recorder.events) == 2
     assert recorder.events[0]["x"] == 100
@@ -40,10 +43,12 @@ def test_click_no_throttle(recorder):
     btn = mock.MagicMock()
     btn.name = "left"
 
-    with mock.patch("time.monotonic", side_effect=[0.0, 0.01, 0.02]):
-        recorder._on_click(100, 200, btn, True)
-        recorder._on_click(100, 200, btn, False)
-        recorder._on_click(150, 250, btn, True)
+    positions = [(100, 200), (100, 200), (150, 250)]
+    with mock.patch("time.monotonic", side_effect=[0.0, 0.01, 0.02]), \
+         mock.patch("autobrower.recorder._abs_pos", side_effect=positions):
+        recorder._on_click(0, 0, btn, True)
+        recorder._on_click(0, 0, btn, False)
+        recorder._on_click(0, 0, btn, True)
 
     assert len(recorder.events) == 3
     assert all(e["type"] == "click" for e in recorder.events)
@@ -53,9 +58,11 @@ def test_scroll_no_throttle(recorder):
     """Scroll events are never throttled."""
     recorder._start_time = 0.0
 
-    with mock.patch("time.monotonic", side_effect=[0.0, 0.01]):
-        recorder._on_scroll(100, 200, 0, -3)
-        recorder._on_scroll(100, 200, 0, 3)
+    positions = [(100, 200), (100, 200)]
+    with mock.patch("time.monotonic", side_effect=[0.0, 0.01]), \
+         mock.patch("autobrower.recorder._abs_pos", side_effect=positions):
+        recorder._on_scroll(0, 0, 0, -3)
+        recorder._on_scroll(0, 0, 0, 3)
 
     assert len(recorder.events) == 2
     assert recorder.events[0]["dy"] == -3
@@ -89,25 +96,30 @@ def test_event_format(recorder):
     btn = mock.MagicMock()
     btn.name = "right"
 
-    with mock.patch("time.monotonic", return_value=1.0):
-        recorder._on_move(50, 60)
+    with mock.patch("time.monotonic", return_value=1.0), \
+         mock.patch("autobrower.recorder._abs_pos", return_value=(50, 60)):
+        recorder._on_move(0, 0)
 
-    with mock.patch("time.monotonic", return_value=1.1):
-        recorder._on_click(50, 60, btn, True)
+    with mock.patch("time.monotonic", return_value=1.1), \
+         mock.patch("autobrower.recorder._abs_pos", return_value=(50, 60)):
+        recorder._on_click(0, 0, btn, True)
 
-    with mock.patch("time.monotonic", return_value=1.2):
-        recorder._on_scroll(50, 60, 1, -2)
+    with mock.patch("time.monotonic", return_value=1.2), \
+         mock.patch("autobrower.recorder._abs_pos", return_value=(50, 60)):
+        recorder._on_scroll(0, 0, 1, -2)
 
     move = recorder.events[0]
     assert move["type"] == "move"
-    assert "x" in move and "y" in move
+    assert move["x"] == 50 and move["y"] == 60
 
     click = recorder.events[1]
     assert click["type"] == "click"
     assert click["button"] == "right"
     assert click["pressed"] is True
+    assert click["x"] == 50 and click["y"] == 60
 
     scroll = recorder.events[2]
     assert scroll["type"] == "scroll"
     assert scroll["dx"] == 1
     assert scroll["dy"] == -2
+    assert scroll["x"] == 50 and scroll["y"] == 60

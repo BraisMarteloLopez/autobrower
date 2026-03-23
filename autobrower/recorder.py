@@ -2,9 +2,15 @@ import json
 import time
 from datetime import datetime, timezone
 
+import pyautogui
 from pynput import keyboard, mouse
 
 from autobrower.config import SAMPLE_INTERVAL, SCAN_TARGETS, get_profile_path
+
+
+def _abs_pos() -> tuple[int, int]:
+    """Return absolute cursor position via pyautogui (reliable on multi-monitor)."""
+    return pyautogui.position()
 
 
 class Recorder:
@@ -21,15 +27,17 @@ class Recorder:
     def _elapsed(self) -> float:
         return time.monotonic() - self._start_time
 
-    def _on_move(self, x: int, y: int) -> None:
+    def _on_move(self, _x: int, _y: int) -> None:
         t = self._elapsed()
         if t - self._last_move_time < self.interval:
             return
         self._last_move_time = t
+        x, y = _abs_pos()
         self.events.append({"t": round(t, 4), "type": "move", "x": x, "y": y})
 
-    def _on_click(self, x: int, y: int, button: mouse.Button, pressed: bool) -> None:
+    def _on_click(self, _x: int, _y: int, button: mouse.Button, pressed: bool) -> None:
         t = self._elapsed()
+        x, y = _abs_pos()
         self.events.append({
             "t": round(t, 4),
             "type": "click",
@@ -39,8 +47,9 @@ class Recorder:
             "pressed": pressed,
         })
 
-    def _on_scroll(self, x: int, y: int, dx: int, dy: int) -> None:
+    def _on_scroll(self, _x: int, _y: int, dx: int, dy: int) -> None:
         t = self._elapsed()
+        x, y = _abs_pos()
         self.events.append({
             "t": round(t, 4),
             "type": "scroll",
