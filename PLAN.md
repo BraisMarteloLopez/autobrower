@@ -6,111 +6,259 @@ para distintos contextos (Chrome, Brave, Firefox, o cualquier aplicación).
 
 ---
 
-## Fase 0 — Estructura del proyecto
+## Fase 0 — Estructura y scaffolding
 
-- [ ] Inicializar estructura de directorios:
-  ```
-  autobrower/
-  ├── autobrower/
-  │   ├── __init__.py
-  │   ├── config.py        # Carga de .env y constantes
-  │   ├── recorder.py       # Grabación de eventos del ratón (OS-level)
-  │   ├── player.py         # Reproducción en bucle (OS-level)
-  │   └── cli.py            # Punto de entrada (CLI)
-  ├── profiles/             # Directorio donde se guardan los perfiles
-  ├── .env.example
-  ├── requirements.txt
-  └── PLAN.md
-  ```
-- [ ] Crear `.env.example` con las variables de configuración
-- [ ] Crear `requirements.txt` con dependencias
+### 0.1 — Crear árbol de directorios
+```
+autobrower/
+├── autobrower/
+│   ├── __init__.py
+│   ├── config.py
+│   ├── recorder.py
+│   ├── player.py
+│   └── cli.py
+├── profiles/
+│   └── .gitkeep
+├── .env.example
+├── requirements.txt
+└── PLAN.md
+```
 
-## Fase 1 — Configuración (config.py)
+### 0.2 — requirements.txt
+```
+pynput>=1.7
+pyautogui>=0.9
+python-dotenv>=1.0
+```
 
-- [ ] Cargar variables desde `.env`:
-  - `SAMPLE_INTERVAL` — Intervalo de muestreo en segundos (por defecto `0.16`)
-  - `PROFILES_DIR` — Directorio de perfiles (por defecto `./profiles`)
-- [ ] Función para resolver la ruta de un perfil por nombre
-
-## Fase 2 — Grabación de eventos del ratón (recorder.py)
-
-- [ ] Usar `pynput.mouse.Listener` para capturar eventos a nivel de OS:
-  - `move` → registrar posición `(x, y)`
-  - `click` → registrar `(x, y, button, pressed)`
-  - `scroll` → registrar `(x, y, dx, dy)`
-- [ ] Cada evento se almacena con timestamp relativo al inicio de la grabación
-- [ ] Formato de evento:
-  ```json
-  {
-    "t": 0.163,
-    "type": "move|click|scroll",
-    "x": 512,
-    "y": 340,
-    "button": "left|right|middle",
-    "pressed": true,
-    "dx": 0,
-    "dy": -3
-  }
-  ```
-- [ ] Muestreo de `move`: solo registrar un `move` cada `SAMPLE_INTERVAL`
-  para evitar miles de eventos por segundo (los clicks y scrolls se registran
-  siempre, sin throttle)
-- [ ] Al finalizar (Ctrl+C), guardar en `profiles/<nombre>.json`
-
-## Fase 3 — Reproducción en bucle (player.py)
-
-- [ ] Cargar perfil desde `profiles/<nombre>.json`
-- [ ] Para cada evento, usar `pyautogui` para ejecutar la acción a nivel de OS:
-  - `move` → `pyautogui.moveTo(x, y)`
-  - `click` → `pyautogui.click(x, y, button=...)`  (solo en `pressed=true`)
-  - `scroll` → `pyautogui.scroll(dy, x, y)`
-- [ ] Respetar los deltas de tiempo entre eventos (`time.sleep(delta)`)
-- [ ] Bucle infinito: al terminar la secuencia, reiniciar desde el primer evento
-- [ ] Mecanismo de parada segura: Ctrl+C o hotkey configurable
-
-## Fase 4 — CLI (cli.py)
-
-- [ ] Subcomando `record <perfil>`:
-  - Inicia grabación y la guarda como `profiles/<perfil>.json`
-  - Flag `--interval` / `-i` para override de `SAMPLE_INTERVAL`
-- [ ] Subcomando `play <perfil>`:
-  - Reproduce en bucle el perfil indicado
-  - Flag `--no-loop` para una sola ejecución
-  - Flag `--speed` para multiplicador de velocidad (por defecto `1.0`)
-- [ ] Subcomando `list`:
-  - Muestra los perfiles disponibles con metadatos (duración, nº eventos)
-- [ ] Subcomando `delete <perfil>`:
-  - Elimina un perfil
-
-## Fase 5 — Testing y pulido
-
-- [ ] Tests unitarios para `config.py`
-- [ ] Tests para serialización/deserialización de perfiles
-- [ ] Test de reproducción con mock de pyautogui
-- [ ] README.md (se deja para el final)
+### 0.3 — .env.example
+```env
+SAMPLE_INTERVAL=0.16
+PROFILES_DIR=./profiles
+```
 
 ---
 
-## Dependencias principales
+## Fase 1 — config.py
+
+### 1.1 — Cargar .env
+- Llamar a `load_dotenv()` al importar el módulo
+- Definir constantes con valores por defecto:
+  - `SAMPLE_INTERVAL: float` → `float(os.getenv("SAMPLE_INTERVAL", "0.16"))`
+  - `PROFILES_DIR: str` → `os.getenv("PROFILES_DIR", "./profiles")`
+
+### 1.2 — Helper de rutas de perfil
+- `get_profile_path(name: str) -> Path`
+  - Retorna `PROFILES_DIR / f"{name}.json"`
+  - Crea `PROFILES_DIR` si no existe (`mkdir -p`)
+
+### 1.3 — Helper de listado
+- `list_profiles() -> list[dict]`
+  - Escanea `PROFILES_DIR/*.json`
+  - Para cada archivo, lee solo los metadatos (primeros campos del JSON)
+  - Retorna lista de `{name, created, duration, event_count}`
+
+---
+
+## Fase 2 — recorder.py
+
+### 2.1 — Estructura de datos del evento
+- Definir dataclass o TypedDict `MouseEvent`:
+  ```python
+  {
+    "t": float,        # segundos desde inicio
+    "type": str,        # "move" | "click" | "scroll"
+    "x": int,
+    "y": int,
+    "button": str|None, # "left" | "right" | "middle" | None
+    "pressed": bool|None,
+    "dx": int|None,
+    "dy": int|None
+  }
+  ```
+
+### 2.2 — Clase Recorder
+- `__init__(self, interval: float)`:
+  - `self.events: list[dict] = []`
+  - `self.interval = interval`
+  - `self.start_time: float = 0`
+  - `self.last_move_time: float = 0`
+
+- **Callbacks de pynput:**
+  - `_on_move(self, x, y)`:
+    - Calcular `now - start_time` → `t`
+    - Si `t - last_move_time < interval` → descartar (throttle)
+    - Si no → append evento `move`, actualizar `last_move_time`
+  - `_on_click(self, x, y, button, pressed)`:
+    - Siempre registrar (sin throttle)
+    - `button` → convertir `pynput.mouse.Button` a string
+  - `_on_scroll(self, x, y, dx, dy)`:
+    - Siempre registrar (sin throttle)
+
+### 2.3 — Método start/stop
+- `start(self)`:
+  - `self.start_time = time.monotonic()`
+  - Crear `pynput.mouse.Listener` con los 3 callbacks
+  - Iniciar listener (es un thread)
+  - Bloquear en `listener.join()` (se interrumpe con Ctrl+C)
+- `stop(self)`:
+  - Detener el listener
+
+### 2.4 — Método save
+- `save(self, profile_name: str)`:
+  - Construir documento JSON:
+    ```json
+    {
+      "name": "chrome-login",
+      "created": "2026-03-23T10:30:00",
+      "duration": 45.2,
+      "event_count": 1230,
+      "events": [...]
+    }
+    ```
+  - Escribir en `get_profile_path(profile_name)`
+
+---
+
+## Fase 3 — player.py
+
+### 3.1 — Carga de perfil
+- `load_profile(name: str) -> dict`:
+  - Leer JSON desde `get_profile_path(name)`
+  - Validar que existe y tiene el formato esperado
+  - Retornar el documento completo
+
+### 3.2 — Clase Player
+- `__init__(self, profile: dict, speed: float = 1.0, loop: bool = True)`:
+  - `self.events = profile["events"]`
+  - `self.speed = speed`
+  - `self.loop = loop`
+  - `self.running = False`
+
+### 3.3 — Ejecución de un evento
+- `_dispatch(self, event: dict)`:
+  - Según `event["type"]`:
+    - `"move"` → `pyautogui.moveTo(x, y, duration=0)`
+    - `"click"` y `pressed=True` → `pyautogui.mouseDown(x, y, button=...)`
+    - `"click"` y `pressed=False` → `pyautogui.mouseUp(x, y, button=...)`
+    - `"scroll"` → `pyautogui.scroll(dy, x, y)`
+
+### 3.4 — Bucle de reproducción
+- `play(self)`:
+  - `self.running = True`
+  - `pyautogui.FAILSAFE = True` (mover ratón a esquina superior-izq para abortar)
+  - Bucle:
+    - Iterar `events` por pares `(current, next)`
+    - Ejecutar `_dispatch(current)`
+    - Calcular `delta = (next.t - current.t) / speed`
+    - `time.sleep(delta)`
+    - Al final de la lista: si `self.loop` → reiniciar, si no → parar
+  - Capturar `KeyboardInterrupt` para parada limpia
+
+---
+
+## Fase 4 — cli.py
+
+### 4.1 — Configurar argparse
+- Parser principal: `autobrower`
+- Subparsers: `record`, `play`, `list`, `delete`
+
+### 4.2 — Subcomando `record`
+```
+autobrower record <perfil> [--interval 0.16]
+```
+- Instanciar `Recorder(interval=...)`
+- Imprimir mensaje "Grabando... Ctrl+C para detener"
+- `recorder.start()` (bloquea hasta Ctrl+C)
+- `recorder.save(perfil)`
+- Imprimir resumen: duración, nº eventos
+
+### 4.3 — Subcomando `play`
+```
+autobrower play <perfil> [--speed 1.0] [--no-loop]
+```
+- `load_profile(perfil)`
+- Instanciar `Player(profile, speed, loop)`
+- Imprimir mensaje "Reproduciendo... Ctrl+C o esquina sup-izq para detener"
+- `player.play()`
+
+### 4.4 — Subcomando `list`
+```
+autobrower list
+```
+- `list_profiles()`
+- Imprimir tabla: nombre, fecha, duración, nº eventos
+
+### 4.5 — Subcomando `delete`
+```
+autobrower delete <perfil>
+```
+- Confirmar con el usuario (input y/n)
+- Eliminar archivo
+
+### 4.6 — Entry point
+- `if __name__ == "__main__"` en `cli.py`
+- También registrar en `pyproject.toml` si se añade más adelante
+
+---
+
+## Fase 5 — Testing
+
+### 5.1 — Tests de config
+- Verificar valores por defecto
+- Verificar override desde .env
+- Verificar creación de directorio de perfiles
+
+### 5.2 — Tests de recorder
+- Mock de `pynput.mouse.Listener`
+- Verificar throttle de moves
+- Verificar que clicks y scrolls no se throttlean
+- Verificar formato del JSON de salida
+
+### 5.3 — Tests de player
+- Mock de `pyautogui`
+- Verificar que cada tipo de evento llama a la función correcta
+- Verificar cálculo de deltas con speed multiplier
+- Verificar que loop reinicia la secuencia
+
+### 5.4 — Tests de CLI
+- Verificar parsing de argumentos
+- Verificar subcomandos con mocks
+
+---
+
+## Orden de implementación
+
+```
+Fase 0 (scaffolding)
+  └→ Fase 1 (config)
+       └→ Fase 2 (recorder)    ← primera funcionalidad usable: grabar
+            └→ Fase 3 (player) ← segunda funcionalidad usable: reproducir
+                 └→ Fase 4 (CLI) ← todo integrado
+                      └→ Fase 5 (tests)
+```
+
+Cada fase es un commit independiente. Al final de la Fase 2 ya se puede
+probar la grabación manualmente. Al final de la Fase 3 el producto mínimo
+está completo.
+
+---
+
+## Dependencias
 
 | Paquete | Uso |
 |---------|-----|
-| `pynput` | Captura de eventos de ratón a nivel de OS (listener) |
-| `pyautogui` | Reproducción de acciones de ratón a nivel de OS |
+| `pynput` | Listener de ratón a nivel de OS |
+| `pyautogui` | Control de ratón a nivel de OS |
 | `python-dotenv` | Carga de `.env` |
 
 ## Notas técnicas
 
-- **OS-level, no CDP**: Al operar a nivel de sistema operativo, el programa es
-  completamente agnóstico al navegador. Funciona con Chrome, Brave, Firefox, o
-  cualquier otra aplicación.
-- **pynput para grabar, pyautogui para reproducir**: `pynput` ofrece listeners
-  no intrusivos para captura. `pyautogui` proporciona control directo del
-  cursor para reproducción.
-- **Perfiles**: Cada grabación se guarda como un archivo JSON independiente.
-  Se pueden tener múltiples perfiles (ej: `chrome-login`, `brave-scroll`,
-  `firefox-test`) y ejecutar el que se necesite.
-- **Throttle de movimiento**: Solo se aplica a `move`. Los `click` y `scroll`
-  se registran siempre para no perder acciones.
-- **Precisión temporal**: `SAMPLE_INTERVAL=0.16s` ≈ 6 muestras/s de movimiento.
-  Suficiente para reproducir trayectorias suaves.
+- **pynput para grabar, pyautogui para reproducir**: `pynput` tiene listeners
+  pasivos (no intrusivos). `pyautogui` tiene control activo del cursor.
+- **Throttle solo en move**: Los clicks y scrolls son discretos y escasos,
+  los moves pueden generar cientos de eventos por segundo.
+- **pyautogui.FAILSAFE**: Mover el ratón a (0,0) aborta la ejecución.
+  Seguridad extra ante bucle infinito.
+- **time.monotonic()**: Para timestamps, no `time.time()`, evita problemas
+  con ajustes de reloj del sistema.
