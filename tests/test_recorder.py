@@ -24,9 +24,9 @@ def test_move_throttle(recorder):
     recorder._start_time = 0.0
     recorder._last_move_time = -1.0  # allow first event through
 
-    positions = [(100, 200), (130, 230)]  # only non-throttled calls reach _abs_pos
+    positions = [(100, 200), (130, 230)]  # only non-throttled calls reach _get_cursor_pos
     with mock.patch("time.monotonic", side_effect=[0.0, 0.05, 0.10, 0.20]), \
-         mock.patch("autobrower.recorder._abs_pos", side_effect=positions):
+         mock.patch("autobrower.recorder._get_cursor_pos", side_effect=positions):
         recorder._on_move(0, 0)  # t=0.0 → recorded (last_move=-1)
         recorder._on_move(0, 0)  # t=0.05 → throttled (0.05 < 0.16)
         recorder._on_move(0, 0)  # t=0.10 → throttled (0.10 < 0.16)
@@ -45,7 +45,7 @@ def test_click_no_throttle(recorder):
 
     positions = [(100, 200), (100, 200), (150, 250)]
     with mock.patch("time.monotonic", side_effect=[0.0, 0.01, 0.02]), \
-         mock.patch("autobrower.recorder._abs_pos", side_effect=positions):
+         mock.patch("autobrower.recorder._get_cursor_pos", side_effect=positions):
         recorder._on_click(0, 0, btn, True)
         recorder._on_click(0, 0, btn, False)
         recorder._on_click(0, 0, btn, True)
@@ -60,7 +60,7 @@ def test_scroll_no_throttle(recorder):
 
     positions = [(100, 200), (100, 200)]
     with mock.patch("time.monotonic", side_effect=[0.0, 0.01]), \
-         mock.patch("autobrower.recorder._abs_pos", side_effect=positions):
+         mock.patch("autobrower.recorder._get_cursor_pos", side_effect=positions):
         recorder._on_scroll(0, 0, 0, -3)
         recorder._on_scroll(0, 0, 0, 3)
 
@@ -97,15 +97,15 @@ def test_event_format(recorder):
     btn.name = "right"
 
     with mock.patch("time.monotonic", return_value=1.0), \
-         mock.patch("autobrower.recorder._abs_pos", return_value=(50, 60)):
+         mock.patch("autobrower.recorder._get_cursor_pos", return_value=(50, 60)):
         recorder._on_move(0, 0)
 
     with mock.patch("time.monotonic", return_value=1.1), \
-         mock.patch("autobrower.recorder._abs_pos", return_value=(50, 60)):
+         mock.patch("autobrower.recorder._get_cursor_pos", return_value=(50, 60)):
         recorder._on_click(0, 0, btn, True)
 
     with mock.patch("time.monotonic", return_value=1.2), \
-         mock.patch("autobrower.recorder._abs_pos", return_value=(50, 60)):
+         mock.patch("autobrower.recorder._get_cursor_pos", return_value=(50, 60)):
         recorder._on_scroll(0, 0, 1, -2)
 
     move = recorder.events[0]

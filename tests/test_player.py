@@ -128,10 +128,11 @@ def test_loop_delay(mock_sleep):
     original_dispatch = player._dispatch
 
     def counting_dispatch(event):
-        original_dispatch(event)
+        result = original_dispatch(event)
         call_count[0] += 1
         if call_count[0] >= 4:  # 2 events x 2 cycles
             player.stop()
+        return result
 
     player._dispatch = counting_dispatch
     player.play()
