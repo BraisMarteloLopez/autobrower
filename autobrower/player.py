@@ -9,6 +9,19 @@ from autobrower.config import SCAN_TARGETS as DEFAULT_NO_CITAS_PHRASES
 from autobrower.config import get_profile_path
 
 IS_WINDOWS = platform.system() == "Windows"
+IS_LINUX = platform.system() == "Linux"
+
+
+def _xdotool(*args: str) -> bool:
+    """Run an xdotool command. Returns True on success, False if unavailable."""
+    try:
+        subprocess.run(
+            ["xdotool", *args],
+            check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        return True
+    except FileNotFoundError:
+        return False
 
 
 def _move_to(x: int, y: int) -> None:
@@ -16,14 +29,69 @@ def _move_to(x: int, y: int) -> None:
 
     pyautogui.moveTo() clamps coordinates to the primary monitor bounds,
     so negative x/y values (monitors to the left/above) are silently lost.
-    On Windows we call SetCursorPos directly; on other platforms we fall
-    back to pyautogui which generally handles multi-monitor via Xlib.
+    On Windows we call SetCursorPos directly; on Linux we use xdotool
+    which correctly handles the full virtual screen coordinate space.
     """
     if IS_WINDOWS:
         import ctypes
         ctypes.windll.user32.SetCursorPos(x, y)
+    elif IS_LINUX and _xdotool("mousemove", "--", str(x), str(y)):
+        pass  # xdotool handled it
     else:
         pyautogui.moveTo(x, y, _pause=False)
+
+
+def _send_wheel(clicks: int, horizontal: bool = False) -> None:
+    """Send a mouse wheel event via SendInput on Windows.
+
+    Uses WHEEL_DELTA=120 per click to match the Windows wheel protocol.
+    """
+    import ctypes
+    import ctypes.wintypes
+    MOUSEEVENTF_WHEEL = 0x0800
+    MOUSEEVENTF_HWHEEL = 0x01000
+    WHEEL_DELTA = 120
+
+    class MOUSEINPUT(ctypes.Structure):
+        _fields_ = [
+            ("dx", ctypes.c_long),
+            ("dy", ctypes.c_long),
+            ("mouseData", ctypes.wintypes.DWORD),
+            ("dwFlags", ctypes.wintypes.DWORD),
+            ("time", ctypes.wintypes.DWORD),
+            ("dwExtraInfo", ctypes.POINTER(ctypes.c_ulong)),
+        ]
+
+    class INPUT(ctypes.Structure):
+        _fields_ = [
+            ("type", ctypes.wintypes.DWORD),
+            ("mi", MOUSEINPUT),
+        ]
+
+    inp = INPUT()
+    inp.type = 0  # INPUT_MOUSE
+    inp.mi.dx = 0
+    inp.mi.dy = 0
+    inp.mi.mouseData = ctypes.wintypes.DWORD(int(clicks * WHEEL_DELTA))
+    inp.mi.dwFlags = MOUSEEVENTF_HWHEEL if horizontal else MOUSEEVENTF_WHEEL
+    inp.mi.time = 0
+    inp.mi.dwExtraInfo = None
+    ctypes.windll.user32.SendInput(1, ctypes.byref(inp), ctypes.sizeof(inp))
+
+
+def _vscroll(clicks: int) -> None:
+    """Vertical scroll that works reliably on all platforms including multi-monitor."""
+    if clicks == 0:
+        return
+    if IS_WINDOWS:
+        _send_wheel(clicks, horizontal=False)
+    elif IS_LINUX:
+        button = "5" if clicks < 0 else "4"
+        if _xdotool("click", "--repeat", str(abs(clicks)), button):
+            return
+        pyautogui.scroll(clicks, _pause=False)
+    else:
+        pyautogui.scroll(clicks, _pause=False)
 
 
 def _click(x: int, y: int, button: str, pressed: bool) -> None:
@@ -38,36 +106,7 @@ def _click(x: int, y: int, button: str, pressed: bool) -> None:
 def _hscroll(clicks: int) -> None:
     """Horizontal scroll that works on all platforms including Windows."""
     if IS_WINDOWS:
-        import ctypes
-        import ctypes.wintypes
-        MOUSEEVENTF_HWHEEL = 0x01000
-        WHEEL_DELTA = 120
-        # Build a MOUSEINPUT struct via SendInput
-        class MOUSEINPUT(ctypes.Structure):
-            _fields_ = [
-                ("dx", ctypes.c_long),
-                ("dy", ctypes.c_long),
-                ("mouseData", ctypes.wintypes.DWORD),
-                ("dwFlags", ctypes.wintypes.DWORD),
-                ("time", ctypes.wintypes.DWORD),
-                ("dwExtraInfo", ctypes.POINTER(ctypes.c_ulong)),
-            ]
-
-        class INPUT(ctypes.Structure):
-            _fields_ = [
-                ("type", ctypes.wintypes.DWORD),
-                ("mi", MOUSEINPUT),
-            ]
-
-        inp = INPUT()
-        inp.type = 0  # INPUT_MOUSE
-        inp.mi.dx = 0
-        inp.mi.dy = 0
-        inp.mi.mouseData = ctypes.wintypes.DWORD(int(clicks * WHEEL_DELTA))
-        inp.mi.dwFlags = MOUSEEVENTF_HWHEEL
-        inp.mi.time = 0
-        inp.mi.dwExtraInfo = None
-        ctypes.windll.user32.SendInput(1, ctypes.byref(inp), ctypes.sizeof(inp))
+        _send_wheel(clicks, horizontal=True)
     else:
         pyautogui.hscroll(clicks, _pause=False)
 
@@ -161,7 +200,7 @@ class Player:
             dx = event.get("dx", 0)
             _move_to(x, y)
             if dy:
-                pyautogui.scroll(dy, _pause=False)
+                _vscroll(dy)
             if dx:
                 _hscroll(dx)
 
