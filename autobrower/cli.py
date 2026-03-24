@@ -59,7 +59,7 @@ def cmd_play(args: argparse.Namespace) -> None:
     print("Press 'j', Ctrl+C, or move mouse to top-left corner to stop.")
 
     player = Player(profile, speed=speed, loop=loop, loop_delay=args.loop_delay,
-                    scan_targets=scan_targets)
+                    scan_targets=scan_targets, scroll_factor=args.scroll_factor)
     player.play()
     print("\nPlayback stopped.")
 
@@ -170,6 +170,8 @@ def main() -> None:
     p_play.add_argument("--no-loop", action="store_true", help="Play once instead of looping")
     p_play.add_argument("--loop-delay", type=float, default=0.5,
                         help="Seconds to wait between loop cycles (default: 0.5)")
+    p_play.add_argument("--scroll-factor", type=int, default=1,
+                        help="Multiply scroll amounts by this factor (default: 1)")
     p_play.add_argument("--scan", action="store_true",
                         help="Enable OCR scan after each loop cycle to detect appointment availability")
     p_play.add_argument("--scan-target", type=str, action="append", default=None,

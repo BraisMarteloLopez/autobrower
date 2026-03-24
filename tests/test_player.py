@@ -155,3 +155,22 @@ def test_empty_profile(mock_sleep):
 
     mock_pyautogui.moveTo.assert_not_called()
     mock_sleep.assert_not_called()
+
+
+def test_scroll_factor_amplifies_dy():
+    """scroll_factor multiplies dy and dx on scroll events."""
+    event = {"t": 0.0, "type": "scroll", "x": 100, "y": 200, "dx": 0, "dy": -1}
+    profile = {"name": "test", "events": [event]}
+    player = Player(profile, loop=False, scroll_factor=3)
+    player._dispatch(event)
+    mock_pyautogui.scroll.assert_called_once_with(-3, _pause=False)
+
+
+@mock.patch("autobrower.player._hscroll")
+def test_scroll_factor_amplifies_dx(mock_hs):
+    """scroll_factor also multiplies dx for horizontal scroll."""
+    event = {"t": 0.0, "type": "scroll", "x": 100, "y": 200, "dx": 2, "dy": 0}
+    profile = {"name": "test", "events": [event]}
+    player = Player(profile, loop=False, scroll_factor=3)
+    player._dispatch(event)
+    mock_hs.assert_called_once_with(6)

@@ -12,9 +12,6 @@ from autobrower.scanner import _get_cursor_pos
 class Recorder:
     """Records mouse events at OS level using pynput."""
 
-    # Scroll events arriving within this window are merged into one event
-    SCROLL_MERGE_WINDOW = 0.35  # seconds
-
     def __init__(self, interval: float = SAMPLE_INTERVAL):
         self.interval = interval
         self.events: list[dict] = []
@@ -55,14 +52,6 @@ class Recorder:
     def _on_scroll(self, _x: int, _y: int, dx: int, dy: int) -> None:
         t = self._elapsed()
         x, y = _get_cursor_pos()
-        with self._lock:
-            # Merge with the previous scroll event if it's recent enough
-            if (self.events
-                    and self.events[-1]["type"] == "scroll"
-                    and t - self.events[-1]["t"] <= self.SCROLL_MERGE_WINDOW):
-                self.events[-1]["dx"] += dx
-                self.events[-1]["dy"] += dy
-                return
         self._append({
             "t": round(t, 4),
             "type": "scroll",

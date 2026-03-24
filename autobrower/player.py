@@ -152,7 +152,8 @@ class Player:
 
     def __init__(self, profile: dict, speed: float = 1.0, loop: bool = True,
                  loop_delay: float = 0.5,
-                 scan_targets: list[str] | None = None):
+                 scan_targets: list[str] | None = None,
+                 scroll_factor: int = 1):
         if speed <= 0:
             raise ValueError(f"speed must be positive, got {speed}")
         self.events = profile["events"]
@@ -161,6 +162,7 @@ class Player:
         self.loop_delay = loop_delay
         self.running = False
         self._scan_targets = scan_targets
+        self.scroll_factor = scroll_factor
 
     def _run_scan_at(self, x: int, y: int) -> bool:
         """Run OCR scan at the given position (from a recorded scan event).
@@ -201,8 +203,8 @@ class Player:
             _click(x, y, button, event.get("pressed", True))
 
         elif etype == "scroll":
-            dy = event.get("dy", 0)
-            dx = event.get("dx", 0)
+            dy = event.get("dy", 0) * self.scroll_factor
+            dx = event.get("dx", 0) * self.scroll_factor
             _move_to(x, y)
             if dy:
                 _vscroll(dy)
