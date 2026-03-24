@@ -59,8 +59,8 @@ def test_scroll_merge_within_window(recorder):
     recorder._start_time = 0.0
 
     positions = [(100, 200), (100, 200), (100, 200)]
-    # 3 ticks at 0ms, 10ms, 50ms — all within 80ms merge window
-    with mock.patch("time.monotonic", side_effect=[0.0, 0.01, 0.05]), \
+    # 3 ticks at 0ms, 100ms, 300ms — all within 350ms merge window
+    with mock.patch("time.monotonic", side_effect=[0.0, 0.1, 0.3]), \
          mock.patch("autobrower.recorder._get_cursor_pos", side_effect=positions):
         recorder._on_scroll(0, 0, 0, -1)
         recorder._on_scroll(0, 0, 0, -1)
@@ -75,8 +75,8 @@ def test_scroll_separate_after_window(recorder):
     recorder._start_time = 0.0
 
     positions = [(100, 200), (100, 200)]
-    # 2 ticks at 0ms and 200ms — outside 80ms merge window
-    with mock.patch("time.monotonic", side_effect=[0.0, 0.2]), \
+    # 2 ticks at 0ms and 500ms — outside 350ms merge window
+    with mock.patch("time.monotonic", side_effect=[0.0, 0.5]), \
          mock.patch("autobrower.recorder._get_cursor_pos", side_effect=positions):
         recorder._on_scroll(0, 0, 0, -1)
         recorder._on_scroll(0, 0, 0, -1)

@@ -13,7 +13,7 @@ class Recorder:
     """Records mouse events at OS level using pynput."""
 
     # Scroll events arriving within this window are merged into one event
-    SCROLL_MERGE_WINDOW = 0.08  # seconds
+    SCROLL_MERGE_WINDOW = 0.35  # seconds
 
     def __init__(self, interval: float = SAMPLE_INTERVAL):
         self.interval = interval

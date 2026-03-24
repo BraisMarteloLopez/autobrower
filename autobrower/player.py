@@ -15,11 +15,13 @@ IS_LINUX = platform.system() == "Linux"
 def _xdotool(*args: str) -> bool:
     """Run an xdotool command. Returns True on success, False if unavailable."""
     try:
-        subprocess.run(
+        result = subprocess.run(
             ["xdotool", *args],
-            check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            check=False, capture_output=True, text=True,
         )
-        return True
+        if result.returncode != 0 and result.stderr:
+            print(f"[xdotool] warning: {result.stderr.strip()}")
+        return result.returncode == 0
     except FileNotFoundError:
         return False
 
