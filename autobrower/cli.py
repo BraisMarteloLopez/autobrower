@@ -45,9 +45,12 @@ def cmd_play(args: argparse.Namespace) -> None:
     loop = not args.no_loop
     speed = args.speed
 
-    # Build scan targets list
+    # Build scan targets list.
+    # If the profile contains scan events, enable scanning automatically
+    # (the user explicitly pressed 'h' during recording to create them).
+    has_scan_events = any(e["type"] == "scan" for e in profile["events"])
     scan_targets: list[str] | None = None
-    if args.scan:
+    if args.scan or has_scan_events:
         scan_targets = args.scan_target if args.scan_target else DEFAULT_NO_CITAS_PHRASES
 
     n = profile["event_count"]
