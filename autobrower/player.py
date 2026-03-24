@@ -177,10 +177,13 @@ class Player:
         from autobrower.scanner import scan_for_text
 
         try:
+            all_ocr_text = ""
             for target in self._scan_targets:
                 found, ocr_text = scan_for_text(target, pos=(x, y))
+                all_ocr_text = ocr_text  # keep last OCR text for logging
                 if found:
                     print(f"\n[SCAN] \"{target}\" detected at ({x},{y}) — no appointments, continuing loop...")
+                    print(f"  OCR: {ocr_text[:200]}")
                     return True
         except Exception as exc:
             print(f"\n[SCAN] Error during scan: {exc}")
@@ -188,6 +191,7 @@ class Player:
 
         # None of the target phrases found → appointments might be available!
         print(f"\n[SCAN] Target text NOT found at ({x},{y}) — appointments may be available!")
+        print(f"  OCR: {all_ocr_text[:200]}")
         return False
 
     def _dispatch(self, event: dict) -> bool:
@@ -249,9 +253,18 @@ class Player:
                         break
 
                     if not self._dispatch(event):
-                        # Scan event didn't find target text → stop
+                        # Scan event didn't find target text → alert and ask user
                         _play_alert()
-                        print(f"[ALERT] Stopped after {cycle} cycles — check for available appointments!")
+                        print(f"\n[ALERT] Scan miss after {cycle} cycles — target text not found!")
+                        print("Check the screen. Is this a real match or a false positive?")
+                        try:
+                            answer = input("  (r)esume looping / (s)top permanently [s]: ").strip().lower()
+                        except EOFError:
+                            answer = "s"
+                        if answer == "r":
+                            print("[RESUMED] Continuing playback loop...")
+                            break  # break inner for-loop, continue outer while
+                        print(f"[STOP] Stopped after {cycle} cycles — check for available appointments!")
                         scan_failed = True
                         self.running = False
                         break
