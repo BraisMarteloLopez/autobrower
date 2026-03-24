@@ -54,19 +54,36 @@ def test_click_no_throttle(recorder):
     assert all(e["type"] == "click" for e in recorder.events)
 
 
-def test_scroll_no_throttle(recorder):
-    """Scroll events are never throttled."""
+def test_scroll_merge_within_window(recorder):
+    """Consecutive scroll ticks within the merge window are combined."""
+    recorder._start_time = 0.0
+
+    positions = [(100, 200), (100, 200), (100, 200)]
+    # 3 ticks at 0ms, 10ms, 50ms — all within 80ms merge window
+    with mock.patch("time.monotonic", side_effect=[0.0, 0.01, 0.05]), \
+         mock.patch("autobrower.recorder._get_cursor_pos", side_effect=positions):
+        recorder._on_scroll(0, 0, 0, -1)
+        recorder._on_scroll(0, 0, 0, -1)
+        recorder._on_scroll(0, 0, 0, -1)
+
+    assert len(recorder.events) == 1
+    assert recorder.events[0]["dy"] == -3
+
+
+def test_scroll_separate_after_window(recorder):
+    """Scroll events beyond the merge window create a new event."""
     recorder._start_time = 0.0
 
     positions = [(100, 200), (100, 200)]
-    with mock.patch("time.monotonic", side_effect=[0.0, 0.01]), \
+    # 2 ticks at 0ms and 200ms — outside 80ms merge window
+    with mock.patch("time.monotonic", side_effect=[0.0, 0.2]), \
          mock.patch("autobrower.recorder._get_cursor_pos", side_effect=positions):
-        recorder._on_scroll(0, 0, 0, -3)
-        recorder._on_scroll(0, 0, 0, 3)
+        recorder._on_scroll(0, 0, 0, -1)
+        recorder._on_scroll(0, 0, 0, -1)
 
     assert len(recorder.events) == 2
-    assert recorder.events[0]["dy"] == -3
-    assert recorder.events[1]["dy"] == 3
+    assert recorder.events[0]["dy"] == -1
+    assert recorder.events[1]["dy"] == -1
 
 
 def test_save_creates_valid_json(recorder):
