@@ -11,6 +11,30 @@ from autobrower.config import get_profile_path
 IS_WINDOWS = platform.system() == "Windows"
 
 
+def _move_to(x: int, y: int) -> None:
+    """Move cursor to absolute coordinates, supporting multi-monitor setups.
+
+    pyautogui.moveTo() clamps coordinates to the primary monitor bounds,
+    so negative x/y values (monitors to the left/above) are silently lost.
+    On Windows we call SetCursorPos directly; on other platforms we fall
+    back to pyautogui which generally handles multi-monitor via Xlib.
+    """
+    if IS_WINDOWS:
+        import ctypes
+        ctypes.windll.user32.SetCursorPos(x, y)
+    else:
+        pyautogui.moveTo(x, y, _pause=False)
+
+
+def _click(x: int, y: int, button: str, pressed: bool) -> None:
+    """Click at absolute coordinates, supporting multi-monitor setups."""
+    _move_to(x, y)
+    if pressed:
+        pyautogui.mouseDown(button=button, _pause=False)
+    else:
+        pyautogui.mouseUp(button=button, _pause=False)
+
+
 def _hscroll(clicks: int) -> None:
     """Horizontal scroll that works on all platforms including Windows."""
     if IS_WINDOWS:
@@ -126,22 +150,16 @@ class Player:
         etype = event["type"]
 
         if etype == "move":
-            pyautogui.moveTo(x, y, _pause=False)
+            _move_to(x, y)
 
         elif etype == "click":
             button = event.get("button", "left")
-            if event.get("pressed", True):
-                pyautogui.mouseDown(x=x, y=y, button=button, _pause=False)
-            else:
-                pyautogui.mouseUp(x=x, y=y, button=button, _pause=False)
+            _click(x, y, button, event.get("pressed", True))
 
         elif etype == "scroll":
             dy = event.get("dy", 0)
             dx = event.get("dx", 0)
-            # Scroll at current cursor position — preceding move events
-            # already placed the cursor on the target element, and the
-            # inter-event sleep preserved the original timing so the
-            # browser has already processed the hover.
+            _move_to(x, y)
             if dy:
                 pyautogui.scroll(dy, _pause=False)
             if dx:

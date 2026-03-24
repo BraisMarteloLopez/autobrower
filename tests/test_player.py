@@ -41,24 +41,26 @@ def test_dispatch_move(sample_profile):
 
 
 def test_dispatch_click_pressed(sample_profile):
-    """Click with pressed=True calls mouseDown."""
+    """Click with pressed=True moves to position then calls mouseDown."""
     player = Player(sample_profile, loop=False)
     player._dispatch(sample_profile["events"][1])
-    mock_pyautogui.mouseDown.assert_called_once_with(x=100, y=200, button="left", _pause=False)
+    mock_pyautogui.moveTo.assert_called_once_with(100, 200, _pause=False)
+    mock_pyautogui.mouseDown.assert_called_once_with(button="left", _pause=False)
 
 
 def test_dispatch_click_released(sample_profile):
-    """Click with pressed=False calls mouseUp."""
+    """Click with pressed=False moves to position then calls mouseUp."""
     player = Player(sample_profile, loop=False)
     player._dispatch(sample_profile["events"][2])
-    mock_pyautogui.mouseUp.assert_called_once_with(x=100, y=200, button="left", _pause=False)
+    mock_pyautogui.moveTo.assert_called_once_with(100, 200, _pause=False)
+    mock_pyautogui.mouseUp.assert_called_once_with(button="left", _pause=False)
 
 
 def test_dispatch_scroll(sample_profile):
-    """Scroll events scroll at current cursor position (no moveTo)."""
+    """Scroll events move to position then scroll."""
     player = Player(sample_profile, loop=False)
     player._dispatch(sample_profile["events"][3])
-    mock_pyautogui.moveTo.assert_not_called()
+    mock_pyautogui.moveTo.assert_called_once_with(100, 200, _pause=False)
     mock_pyautogui.scroll.assert_called_once_with(-3, _pause=False)
 
 
@@ -79,7 +81,7 @@ def test_play_no_loop(mock_sleep, sample_profile):
     player = Player(sample_profile, loop=False)
     player.play()
 
-    assert mock_pyautogui.moveTo.call_count == 1  # only the move event
+    assert mock_pyautogui.moveTo.call_count == 4  # move + 2 clicks + scroll
     assert mock_pyautogui.mouseDown.call_count == 1
     assert mock_pyautogui.mouseUp.call_count == 1
     assert mock_pyautogui.scroll.call_count == 1
