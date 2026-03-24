@@ -50,6 +50,9 @@ def _send_wheel(clicks: int, horizontal: bool = False) -> None:
     import ctypes.wintypes
     MOUSEEVENTF_WHEEL = 0x0800
     MOUSEEVENTF_HWHEEL = 0x01000
+    # WHEEL_DELTA is a C preprocessor #define in WinUser.h, not an exported
+    # symbol — it cannot be read at runtime.  The value has been 120 since
+    # Windows NT 4.0 and is guaranteed by the Windows API contract.
     WHEEL_DELTA = 120
 
     class MOUSEINPUT(ctypes.Structure):
